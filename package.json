@@ -1,0 +1,10 @@
+{
+  "name": "labelbridge",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "build": "pnpm -r --filter \"./packages/*\" build"
+  }
+}

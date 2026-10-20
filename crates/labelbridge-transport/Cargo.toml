@@ -1,0 +1,34 @@
+[package]
+name = "labelbridge-transport"
+description = "プリンターとのバイト列通信（TCP / USB）"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+# crates.io には公開しない（GitHub のソースとして配布）
+publish = false
+rust-version.workspace = true
+
+[features]
+usb = ["dep:rusb"]
+serial = ["dep:libc"]
+
+[dependencies]
+thiserror.workspace = true
+rusb = { version = "0.9", optional = true }
+libc = { version = "0.2", optional = true }
+
+[[example]]
+name = "usb_probe"
+required-features = ["usb"]
+
+[[example]]
+name = "usb_status"
+required-features = ["usb"]
+
+[[example]]
+name = "serial_status"
+required-features = ["serial"]
+
+[dev-dependencies]
+rusb = "0.9"

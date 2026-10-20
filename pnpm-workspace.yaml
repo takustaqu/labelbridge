@@ -1,0 +1,7 @@
+packages:
+  - packages/*
+  - examples/*
+
+# tsup が使う esbuild のバイナリ取得だけ許可する
+allowBuilds:
+  esbuild: true

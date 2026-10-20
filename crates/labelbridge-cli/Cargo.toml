@@ -1,0 +1,25 @@
+[package]
+name = "labelbridge-cli"
+description = "ラベルプリンター（SR3500P / SR-R2500P / SR5900P）の CLI: 状態・印字範囲・画像のドットバイドット印刷"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+# crates.io には公開しない（GitHub のソースとして配布）
+publish = false
+rust-version.workspace = true
+
+[[bin]]
+name = "labelbridge"
+path = "src/main.rs"
+
+[features]
+default = ["usb", "bt"]
+usb = ["labelbridge-transport/usb"]
+bt = ["labelbridge-transport/serial"]
+
+[dependencies]
+labelbridge.workspace = true
+labelbridge-transport.workspace = true
+serde_json.workspace = true
+png = "0.18"

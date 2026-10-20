@@ -1,0 +1,14 @@
+[package]
+name = "labelbridge"
+description = "ラベルプリンター（SR3500P / SR-R2500P / SR5900P）のジョブ生成・ステータス解釈・能力定義"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+# crates.io には公開しない（GitHub のソースとして配布）
+publish = false
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true

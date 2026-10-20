@@ -1,0 +1,19 @@
+/target
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# 実機キャプチャは機種・個体情報（MAC アドレスなど）を含むため既定では除外
+/captures/
+*.pcap
+*.pcapng
+*.cap
+*.btsnoop
+
+# 環境ごとの設定・鍵
+.env
+.env.*
+*.pem
+*.key
+*.p12
