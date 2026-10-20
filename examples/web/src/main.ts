@@ -17,8 +17,8 @@ import {
   type MonoImage,
   type PrintArea,
   type PrinterStatus,
-} from '@labelbridge/core'
-import { imageFromBitmap, imageToDataUrl, requestPrinter, webSerialSupported, webUsbSupported, type WebPrinter } from '@labelbridge/web'
+} from '@takustaqu/labelbridge'
+import { imageFromBitmap, imageToDataUrl, requestPrinter, webSerialSupported, webUsbSupported, type WebPrinter } from '@takustaqu/labelbridge/web'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 

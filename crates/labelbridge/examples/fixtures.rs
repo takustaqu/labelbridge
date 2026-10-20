@@ -1,13 +1,13 @@
-//! TS 版（packages/core）との突き合わせ用に、決まった模様のジョブを書き出す。
+//! TS 版（packages/labelbridge）との突き合わせ用に、決まった模様のジョブを書き出す。
 //!
-//!   cargo run -p labelbridge --example fixtures -- packages/core/test/fixtures
+//!   cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixtures
 //!
 //! 模様はラベル画像の座標（x = 送り方向、y = テープ幅方向・上端 0）で定義し、
 //! Rust のドライバ入力（行 = 送り方向）へは転置して渡す。TS 側も同じ式で画像を作る。
 
 use labelbridge::{Cut, MonoBitmap, PrinterDriver, RasterJob, Sr3500p, Sr5900p, SrR2500p};
 
-/// TS: packages/core/test/fixtures.test.ts の pattern() と同じ式。
+/// TS: packages/labelbridge/test/fixtures.test.ts の pattern() と同じ式。
 fn pattern(width: u32, height: u32) -> MonoBitmap {
     let mut b = MonoBitmap::new(width, height);
     for y in 0..height {
@@ -50,7 +50,7 @@ fn flatten(p: &labelbridge::srr2500p::JobParts) -> Vec<u8> {
 fn main() {
     let dir = std::env::args()
         .nth(1)
-        .unwrap_or_else(|| "packages/core/test/fixtures".into());
+        .unwrap_or_else(|| "packages/labelbridge/test/fixtures".into());
     let write = |name: &str, bytes: &[u8]| {
         let path = format!("{dir}/{name}");
         std::fs::write(&path, bytes).unwrap();

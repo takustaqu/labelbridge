@@ -11,8 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@labelbridge/core": "workspace:*",
-    "@labelbridge/web": "workspace:*"
+    "@takustaqu/labelbridge": "workspace:*"
   },
   "devDependencies": {
     "@types/w3c-web-serial": "^1.0.8",

@@ -1,31 +1,31 @@
-# TypeScript API（@labelbridge/core*）
+# TypeScript API（@takustaqu/labelbridge）
 
-Web アプリ・Electron アプリなどからラベルプリンターを使うためのパッケージ。npm で公開している（ソースは pnpm ワークスペースの `packages/`）。
+Web アプリ・Electron アプリなどからラベルプリンターを使うためのパッケージ `@takustaqu/labelbridge`。npm で公開している（ソースは `packages/labelbridge`）。動く場所ごとに import 先が分かれている。
 
 ```bash
-npm install @labelbridge/web
+npm install @takustaqu/labelbridge
 ```
 
-| パッケージ | 動く場所 | 内容 |
+| import 先 | 動く場所 | 内容 |
 |---|---|---|
-| `@labelbridge/core` | どこでも（DOM・Node 非依存） | 1bpp 画像、機種の能力と印字範囲、3 機種のジョブ生成・ステータス解釈、印刷手順 |
-| `@labelbridge/web` | ブラウザ | WebUSB（SR3500P）、Web Serial（SR-R2500P）、画像との変換、高水準 API |
-| `@labelbridge/node` | Node / Electron のメインプロセス | UDP/TCP 9100（SR5900P）と、その高水準 API |
+| `@takustaqu/labelbridge` | どこでも（DOM・Node 非依存） | 1bpp 画像、機種の能力と印字範囲、3 機種のジョブ生成・ステータス解釈、印刷手順 |
+| `@takustaqu/labelbridge/web` | ブラウザ | WebUSB（SR3500P）、Web Serial（SR-R2500P）、画像との変換、高水準 API |
+| `@takustaqu/labelbridge/node` | Node / Electron のメインプロセス | UDP/TCP 9100（SR5900P）と、その高水準 API |
 
-npm のパッケージは ESM と型定義（`dist/`）。ワークスペース内では、`exports` が TypeScript のソース（`src/index.ts`）を直接指すので、ビルドせずにテストやサンプルから使える（公開時だけ pnpm の `publishConfig` で `dist/` に差し替わる）。
+npm のパッケージは ESM と型定義（`dist/`。import 先ごとに `index` / `web` / `node`）。ワークスペース内では、`exports` が TypeScript のソース（`src/index.ts`）を直接指すので、ビルドせずにテストやサンプルから使える（公開時だけ pnpm の `publishConfig` で `dist/` に差し替わる）。
 
 | 機種 | 接続 | ブラウザ | Node / Electron | 実機確認（12mm） |
 |---|---|---|---|---|
-| SR3500P | USB | `@labelbridge/web`（WebUSB） | —（Rust の `labelbridge-transport` を使う） | 印字・カット・QR |
-| SR-R2500P | Bluetooth SPP | `@labelbridge/web`（Web Serial） | — | 印字・カット・QR |
-| SR5900P | LAN | 不可（UDP を使うため） | `@labelbridge/node` | 印字・カット・QR |
+| SR3500P | USB | `@takustaqu/labelbridge/web`（WebUSB） | —（Rust の `labelbridge-transport` を使う） | 印字・カット・QR |
+| SR-R2500P | Bluetooth SPP | `@takustaqu/labelbridge/web`（Web Serial） | — | 印字・カット・QR |
+| SR5900P | LAN | 不可（UDP を使うため） | `@takustaqu/labelbridge/node` | 印字・カット・QR |
 
 ## まず試す: 接続方式だけ選ぶ
 
-機種名を書かずに使うには、`@labelbridge/web` の `requestPrinter` を使う。USB は product ID から、シリアル（Bluetooth SPP）は能力表から、ライブラリが機種を決める。
+機種名を書かずに使うには、`@takustaqu/labelbridge/web` の `requestPrinter` を使う。USB は product ID から、シリアル（Bluetooth SPP）は能力表から、ライブラリが機種を決める。
 
 ```ts
-import { requestPrinter } from '@labelbridge/web'
+import { requestPrinter } from '@takustaqu/labelbridge/web'
 
 const printer = await requestPrinter('usb') // or 'serial'。ユーザー操作の中で
 const { status, area } = await printer.read() // 装着テープと印字範囲（印字しない）
@@ -46,7 +46,7 @@ await printer.print(image, area!.tapeMm, { copies: 1, cut: 'full' }, console.log
 ### 1. 装着テープと印字範囲を読む
 
 ```ts
-import { readSr3500p, requestUsbPrinter } from '@labelbridge/web'
+import { readSr3500p, requestUsbPrinter } from '@takustaqu/labelbridge/web'
 
 const device = await requestUsbPrinter(0x0102) // ユーザー操作の中で
 const { status, area } = await readSr3500p(device) // 印字はしない
@@ -56,7 +56,7 @@ const { status, area } = await readSr3500p(device) // 印字はしない
 // area.verified      → true （false なら参考資料の表などからの推定値）
 ```
 
-SR-R2500P は `readSrR2500p(port)`（`@labelbridge/web`）、SR5900P は `readSr5900p(host)`（`@labelbridge/node`）を使う。プリンターに繋がずに値だけ知りたいときは、`printArea(model, tapeMm)` / `printAreas(model)`（`@labelbridge/core`）で引ける。
+SR-R2500P は `readSrR2500p(port)`（`@takustaqu/labelbridge/web`）、SR5900P は `readSr5900p(host)`（`@takustaqu/labelbridge/node`）を使う。プリンターに繋がずに値だけ知りたいときは、`printArea(model, tapeMm)` / `printAreas(model)`（`@takustaqu/labelbridge`）で引ける。
 
 `PrintArea` の各フィールド:
 
@@ -71,8 +71,8 @@ SR-R2500P は `readSrR2500p(port)`（`@labelbridge/web`）、SR5900P は `readSr
 ### 2. 画像を作って送る
 
 ```ts
-import { blankImage } from '@labelbridge/core'
-import { imageFromBitmap, printImageSr3500p } from '@labelbridge/web'
+import { blankImage } from '@takustaqu/labelbridge'
+import { imageFromBitmap, printImageSr3500p } from '@takustaqu/labelbridge/web'
 
 // 自分で描く場合
 const img = blankImage(300, area.printableDots) // 幅 300 行 × 高さ 72 ドット
@@ -88,13 +88,13 @@ await printImageSr3500p(device, img, area.tapeMm, { copies: 1 }, (msg) => consol
 
 | 機種 | 印刷する関数 | パッケージ |
 |---|---|---|
-| SR3500P | `printImageSr3500p(device, image, tapeMm, opts, progress)` | `@labelbridge/web` |
-| SR-R2500P | `printImageSrR2500p(port, image, tapeMm, opts, progress)` | `@labelbridge/web` |
-| SR5900P | `printImageSr5900p(host, image, tapeMm, opts, progress)` | `@labelbridge/node` |
+| SR3500P | `printImageSr3500p(device, image, tapeMm, opts, progress)` | `@takustaqu/labelbridge/web` |
+| SR-R2500P | `printImageSrR2500p(port, image, tapeMm, opts, progress)` | `@takustaqu/labelbridge/web` |
+| SR5900P | `printImageSr5900p(host, image, tapeMm, opts, progress)` | `@takustaqu/labelbridge/node` |
 
 ### ジョブの指定（`JobOptions`）
 
-`@labelbridge/core` の `JobOptions`（`@labelbridge/web` / `@labelbridge/node` からも型を再エクスポート）。エンコーダには、これに `tapeMm` を足した `LabelJob` を渡す。
+`@takustaqu/labelbridge` の `JobOptions`（`@takustaqu/labelbridge/web` / `@takustaqu/labelbridge/node` からも型を再エクスポート）。エンコーダには、これに `tapeMm` を足した `LabelJob` を渡す。
 
 | フィールド | 既定 | 意味 |
 |---|---|---|
@@ -113,7 +113,7 @@ await printImageSr3500p(device, img, area.tapeMm, { copies: 1 }, (msg) => consol
 
 対応するカットは能力表 `MODELS[model].fullCut` / `halfCut` にある（Rust の `full_cut` / `half_cut`）。能力表にないカット（SR3500P・SR-R2500P の `'half'`）を渡すと、エンコーダが `UnsupportedCutError`（Rust の `DriverError::UnsupportedCut`）を投げる。`checkCut(model, cut)` で事前に確かめられる。
 
-## 下位の API（@labelbridge/core）
+## 下位の API（@takustaqu/labelbridge）
 
 | 用途 | API |
 |---|---|
@@ -131,17 +131,17 @@ await printImageSr3500p(device, img, area.tapeMm, { copies: 1 }, (msg) => consol
 |---|---|---|
 | `ByteChannel` | `write` / `read` | WebUSB・Web Serial |
 | `UsbPrinterChannel` | `ByteChannel` ＋ `softReset` / `portStatus` | WebUSB |
-| `TprtControl` | UDP の要求・応答 | `@labelbridge/node` |
-| `DataSink` | TCP への書き込み | `@labelbridge/node` |
+| `TprtControl` | UDP の要求・応答 | `@takustaqu/labelbridge/node` |
+| `DataSink` | TCP への書き込み | `@takustaqu/labelbridge/node` |
 
 ほかの環境（Node の libusb、Electron の IPC 越しなど）も、このインターフェースを実装すれば同じ手順で印刷できる。
 
 ## Rust 版との一致
 
-`@labelbridge/core` の 3 つのエンコーダは、Rust の `labelbridge` と同じバイト列を出す。`packages/core/test/fixtures.test.ts` が、Rust で作った fixture と 1 バイトずつ照合している。Rust 側を変えたら、fixture を作り直す:
+`@takustaqu/labelbridge` の 3 つのエンコーダは、Rust の `labelbridge` と同じバイト列を出す。`packages/labelbridge/test/fixtures.test.ts` が、Rust で作った fixture と 1 バイトずつ照合している。Rust 側を変えたら、fixture を作り直す:
 
 ```bash
-cargo run -p labelbridge --example fixtures -- packages/core/test/fixtures
+cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixtures
 ```
 
 ## サンプル
@@ -172,8 +172,8 @@ pnpm typecheck
 ラベルのレイアウト（テンプレートや SVG 描画など）は、利用側の責務です。利用側では、このパッケージから印字範囲を受け取り、その高さのビットマップを作って渡してください。
 
 ```ts
-import { printArea } from '@labelbridge/core'
-import { printImageSrR2500p, readSrR2500p, requestSppPort } from '@labelbridge/web'
+import { printArea } from '@takustaqu/labelbridge'
+import { printImageSrR2500p, readSrR2500p, requestSppPort } from '@takustaqu/labelbridge/web'
 
 const port = await requestSppPort()
 const { area } = await readSrR2500p(port) // 装着テープの印字範囲

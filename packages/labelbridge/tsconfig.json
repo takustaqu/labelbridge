@@ -1,0 +1,21 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node",
+      "w3c-web-usb",
+      "w3c-web-serial"
+    ]
+  },
+  "include": [
+    "src",
+    "test",
+    "scripts",
+    "tsup.config.ts"
+  ]
+}

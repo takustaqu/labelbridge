@@ -18,9 +18,9 @@
 
 | 機種 | 接続 | 解像度 | Rust（CLI） | TypeScript | 確認内容 |
 |---|---|---|---|---|---|
-| テプラ PRO SR3500P | USB | 180dpi | ✅ libusb | ✅ WebUSB（`@labelbridge/web`） | 12mm: 印字・カット・QR |
-| テプラ PRO SR-R2500P | Bluetooth SPP | 180dpi | ✅ macOS 中継アプリ / `/dev/…` | ✅ Web Serial（`@labelbridge/web`） | 12mm: 印字・カット・QR |
-| テプラ PRO SR5900P | LAN（UDP/TCP 9100） | 360dpi | ✅ | ✅ Node（`@labelbridge/node`） | 12mm: 印字・カット・QR |
+| テプラ PRO SR3500P | USB | 180dpi | ✅ libusb | ✅ WebUSB（`@takustaqu/labelbridge/web`） | 12mm: 印字・カット・QR |
+| テプラ PRO SR-R2500P | Bluetooth SPP | 180dpi | ✅ macOS 中継アプリ / `/dev/…` | ✅ Web Serial（`@takustaqu/labelbridge/web`） | 12mm: 印字・カット・QR |
+| テプラ PRO SR5900P | LAN（UDP/TCP 9100） | 360dpi | ✅ | ✅ Node（`@takustaqu/labelbridge/node`） | 12mm: 印字・カット・QR |
 
 12mm 以外のテープ幅の印字可能ドット数は、参考資料からの推定値です。`labelbridge area` と `printArea()` の `confidence` / `verified` で区別できます。
 
@@ -36,9 +36,7 @@
 | `crates/labelbridge-transport` | USB（libusb、`usb`）、シリアル（`serial`）、Unix ソケット、TCP、TPRT（UDP 9100） |
 | `crates/labelbridge-cli` | CLI サンプル `labelbridge`（area / status / print-image / testprint） |
 | `tools/bt-bridge` | macOS 用の Bluetooth SPP ↔ Unix ソケット中継アプリ（Swift。IOBluetooth でリンクを張り直す） |
-| `packages/core` | `@labelbridge/core`: 環境非依存。ジョブ生成・ステータス解釈・印刷手順・印字範囲（Rust 版とバイト単位で一致） |
-| `packages/web` | `@labelbridge/web`: ブラウザ。WebUSB・Web Serial のチャネルと高水準 API |
-| `packages/node` | `@labelbridge/node`: Node / Electron のメインプロセス。UDP/TCP 9100 |
+| `packages/labelbridge` | npm パッケージ `@takustaqu/labelbridge`。`src/core`（環境非依存。ジョブ生成・ステータス解釈・印刷手順・印字範囲。Rust 版とバイト単位で一致）、`src/web`（WebUSB・Web Serial）、`src/node`（UDP/TCP 9100） |
 | `examples/web` | Web サンプル（素の TypeScript + Vite）。接続 → テープ幅を読む → テキストか画像をドットバイドットで印刷 |
 | `docs/protocol.md` | プロトコル資料（出どころと確度つき） |
 | `docs/typescript.md` | TypeScript API とドットバイドット印刷の手順 |
@@ -101,7 +99,7 @@ libusb が必要です（macOS: `brew install libusb`）。USB や Bluetooth を
 
 ## サンプル: Web（TypeScript）
 
-`examples/web` は、`@labelbridge/web` をブラウザから使う見本です（フレームワークなし、Vite）。プリンターにつないでテープ幅と印字可能ドット数を読み、テキストか画像ファイルからその高さの 1bpp 画像を作って、1 画素 = 1 ドットで印刷します。プリンターがなくても、機種とテープ幅を手で選んでプレビューだけ見られます。
+`examples/web` は、`@takustaqu/labelbridge/web` をブラウザから使う見本です（フレームワークなし、Vite）。プリンターにつないでテープ幅と印字可能ドット数を読み、テキストか画像ファイルからその高さの 1bpp 画像を作って、1 画素 = 1 ドットで印刷します。プリンターがなくても、機種とテープ幅を手で選んでプレビューだけ見られます。
 
 ```bash
 pnpm install
@@ -118,14 +116,14 @@ Chromium 系ブラウザ（デスクトップ版）で開きます。USB は Web
 npm で公開しています。
 
 ```bash
-npm install @labelbridge/web
+npm install @takustaqu/labelbridge
 ```
 
-| パッケージ | 動く場所 |
+| import 先 | 動く場所 |
 |---|---|
-| [`@labelbridge/core`](packages/core) | どこでも。ジョブ生成・ステータス解釈・印字範囲 |
-| [`@labelbridge/web`](packages/web) | ブラウザ（WebUSB / Web Serial） |
-| [`@labelbridge/node`](packages/node) | Node / Electron のメインプロセス（LAN） |
+| `@takustaqu/labelbridge` | どこでも。ジョブ生成・ステータス解釈・印字範囲 |
+| `@takustaqu/labelbridge/web` | ブラウザ（WebUSB / Web Serial） |
+| `@takustaqu/labelbridge/node` | Node / Electron のメインプロセス（LAN） |
 
 使い方は [docs/typescript.md](docs/typescript.md) を参照してください。
 
@@ -148,7 +146,7 @@ pnpm typecheck
 Rust のジョブ生成を変えたら、TS 側との一致テスト用の fixture を作り直します。
 
 ```bash
-cargo run -p labelbridge --example fixtures -- packages/core/test/fixtures
+cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixtures
 ```
 
 ## 既知の制約
