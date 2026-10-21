@@ -186,6 +186,7 @@ ESC/P2 の公開仕様から候補になるコマンドを組み合わせ、要�
 ### 接続
 
 - RFCOMM は 2 本ある。ch6 = SerialPort（UUID `1101`）がデータ経路で、ch1 は別サービス。ServiceClass の UUID で選ぶ ✅。
+- **BLE（Bluetooth Low Energy）の広告は出していない**。電源が入り Classic で応答する状態で、macOS の CoreBluetooth で 30 秒ずつ走査しても、本機らしい広告は見つからなかった ✅。そのため Web Bluetooth（GATT のみ）からは使えず、ブラウザからは Web Serial（RFCOMM）を使う。
 - **macOS**
   - `/dev/cu.<機器名>` は、一度閉じるとリンクが張り直されず、2 回目以降は通信できなかった ✅。
   - 本リポジトリの中継アプリ（`tools/bt-bridge`）は、IOBluetooth でベースバンドを張り直し（`closeConnection` → `openConnection`）、SDP で SPP のチャネルを探してから RFCOMM を開く。これで繰り返し接続できた ✅。
