@@ -1,7 +1,7 @@
 {
   "name": "@takustaqu/labelbridge",
   "version": "0.1.0",
-  "description": "キングジム製ラベルプリンターの一部機種（SR3500P / SR-R2500P / SR5900P）を、純正ドライバーなしでドットバイドット印刷するライブラリ。ブラウザ（WebUSB / Web Serial）と Node（LAN）に対応",
+  "description": "キングジム製ラベルプリンターの一部機種を、純正ドライバーなしでドットバイドット印刷するライブラリ。ブラウザ（WebUSB / Web Serial）と Node（LAN）に対応",
   "keywords": [
     "label-printer",
     "webusb",

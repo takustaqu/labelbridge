@@ -66,7 +66,7 @@ target/release/labelbridge status
 ```
 
 ```bash
-target/release/labelbridge status --model sr5900p --host <プリンターの IP アドレス>
+target/release/labelbridge status --host <プリンターの IP アドレス>
 ```
 
 PNG をドットバイドットで印刷する（画像の幅 = ラベル長、高さ = 印字可能ドット数以下、上詰め。拡大縮小しない）:
@@ -81,14 +81,14 @@ target/release/labelbridge print-image label.png
 target/release/labelbridge testprint --length 30
 ```
 
-SR-R2500P（macOS）は、初回に中継アプリをビルドし、Bluetooth の利用を許可します。
+Bluetooth 接続の機種（macOS）は、初回に中継アプリをビルドし、Bluetooth の利用を許可します。
 
 ```bash
 tools/bt-bridge/build.sh
 ```
 
 ```bash
-target/release/labelbridge print-image label.png --model sr-r2500p
+target/release/labelbridge print-image label.png --port <Bluetooth の機器名>
 ```
 
 主なオプション: `--model sr3500p|sr-r2500p|sr5900p`（省略時は --host → LAN、--port → Bluetooth、どちらもなければ USB 機器から決める）、`--tape MM`（省略時は実機から読む）、`--copies N`、`--cut full|half|none`、`--density -5..5`、`--margin DOTS`（SR3500P は前後、SR-R2500P は先頭のみ）、`--threshold 0-255`、`--dry-run out.bin`（送らずにバイト列を書く）。
@@ -151,10 +151,10 @@ cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixture
 
 ## 既知の制約
 
-- **Windows での USB**：OS のプリンタードライバが SR3500P を掴むため、WinUSB への差し替えが必要です（未検証）。
-- **Linux での USB**：`usblp` を外す必要があります（未検証）。
-- **macOS + Chromium 系ブラウザ（SR-R2500P）**：Bluetooth のリンクが一度切れると、ブラウザを再起動するまで Web Serial で開けなくなります（[docs/protocol.md](docs/protocol.md) §3）。
-- **ブラウザから SR5900P**：UDP が使えないため、直接は送れません。Node（Electron のメインプロセスやサーバー）から送ってください。
+- **Windows での USB 接続**：OS のプリンタードライバーが USB 接続のプリンターを掴むため、WinUSB への差し替えが必要です（未検証）。
+- **Linux での USB 接続**：`usblp` を外す必要があります（未検証）。
+- **macOS + Chromium 系ブラウザでの Bluetooth 接続**：Bluetooth のリンクが一度切れると、ブラウザを再起動するまで Web Serial で開けなくなります（[docs/protocol.md](docs/protocol.md) §3）。
+- **ブラウザからの LAN 接続**：LAN 接続の機種は制御に UDP を使うため、ブラウザからは直接送れません。Node（Electron のメインプロセスやサーバー）から送ってください。
 
 ## 謝辞
 

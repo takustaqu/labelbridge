@@ -11,8 +11,8 @@ npm install @takustaqu/labelbridge
 | import 先 | 動く場所 | 内容 |
 |---|---|---|
 | `@takustaqu/labelbridge` | どこでも（DOM・Node 非依存） | 1bpp 画像、機種ごとの印字範囲、ジョブ生成、ステータス解釈 |
-| `@takustaqu/labelbridge/web` | ブラウザ | WebUSB（SR3500P）、Web Serial（SR-R2500P）、画像の変換 |
-| `@takustaqu/labelbridge/node` | Node / Electron のメインプロセス | LAN（SR5900P。UDP/TCP 9100） |
+| `@takustaqu/labelbridge/web` | ブラウザ | USB 接続（WebUSB）、Bluetooth 接続（Web Serial）、画像の変換 |
+| `@takustaqu/labelbridge/node` | Node / Electron のメインプロセス | LAN 接続（UDP/TCP 9100） |
 
 | 機種 | 接続 | 動作確認 |
 |---|---|---|
@@ -51,9 +51,9 @@ API の詳細は [docs/typescript.md](https://github.com/takustaqu/labelbridge/b
 
 ## 既知の制約
 
-- Windows では OS のプリンタードライバーが USB を掴むため、WebUSB で開けません（WinUSB への差し替えが必要。未検証）。
+- Windows では OS のプリンタードライバーが USB 接続のプリンターを掴むため、WebUSB で開けません（WinUSB への差し替えが必要。未検証）。
 - macOS の Chromium では、Bluetooth のリンクが一度切れると、ブラウザを再起動するまで Web Serial で開けなくなることがあります。
-- ブラウザからは UDP が使えないため、SR5900P は `@takustaqu/labelbridge/node` から使います。
+- LAN 接続の機種は制御に UDP を使うため、ブラウザからは使えません。`@takustaqu/labelbridge/node` から使います。
 
 ## ライセンス
 
