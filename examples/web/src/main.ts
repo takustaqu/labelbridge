@@ -49,6 +49,7 @@ const ui = {
   margin: $<HTMLInputElement>('margin'),
   print: $<HTMLButtonElement>('print'),
   log: $('log'),
+  chip: $('conn-chip'),
 }
 
 let printer: WebPrinter | null = null
@@ -124,7 +125,8 @@ async function connect(connection: 'usb' | 'serial') {
     if (connection === 'usb' && !webUsbSupported()) throw new Error(t('noWebUsb'))
     if (connection === 'serial' && !webSerialSupported()) throw new Error(t('noWebSerial'))
     printer = await requestPrinter(connection)
-    log(t('connected', printer.model))
+    log(t('connected', printer.model), 'ok')
+    showChip()
     showCutModes(printer.model)
     ui.manualModel.value = ''
     useManualArea()
@@ -263,10 +265,26 @@ ui.print.addEventListener('click', async () => {
   }
 })
 
+// ---- 接続状態のチップとテープの色 ----
+
+function showChip() {
+  ui.chip.dataset.state = printer ? 'on' : 'off'
+  ui.chip.textContent = printer ? `${printer.model} · ${t(printer.connection === 'usb' ? 'connUsb' : 'connSerial')}` : t('notConnected')
+}
+
+for (const b of document.querySelectorAll<HTMLButtonElement>('[data-tape]')) {
+  b.style.background = b.dataset.tape!
+  b.addEventListener('click', () => {
+    document.documentElement.style.setProperty('--tape', b.dataset.tape!)
+    for (const o of document.querySelectorAll<HTMLButtonElement>('[data-tape]')) o.setAttribute('aria-pressed', String(o === b))
+  })
+}
+
 // ---- 表示言語 ----
 
 function refreshTexts() {
   applyStatic()
+  showChip()
   showCutModes(printer?.model ?? null)
   if (printer && lastStatus) showPrinter(lastStatus, area)
   else if (ui.manualModel.value) useManualArea(true)
