@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>labelbridge — Bluetooth diagnostics</title>
+    <link rel="stylesheet" href="./src/style.css" />
+    <style>
+      .diag { max-width: 860px; margin: 24px auto; padding: 0 16px; display: grid; gap: 16px; }
+      .diag ol { margin: 0; padding-left: 1.3em; color: var(--muted); font-size: 0.9rem; }
+      .diag .log { max-height: 60vh; }
+      .kv { font-family: var(--mono); font-size: 0.85rem; }
+      label.inline { display: inline-flex; gap: 6px; align-items: center; font-size: 0.9rem; }
+    </style>
+  </head>
+  <body>
+    <div class="diag">
+      <section class="card">
+        <header class="card-head"><h2>Bluetooth (Web Serial) diagnostics</h2></header>
+        <p class="hint">
+          Logs every Web Serial event and the exact error of each step, to find out how to recover after the Bluetooth link drops.
+          / Bluetooth のリンクが切れた後に復帰する方法を探すため、Web Serial のイベントと各操作のエラーをそのまま記録します。
+        </p>
+        <ol>
+          <li>Choose port → Open → Status (works?) / ポートを選んで開き、状態を読む</li>
+          <li>Turn the printer off, wait 10 s, turn it on / プリンターの電源を切り、10 秒待って入れる</li>
+          <li>Try, in order: Status → Open → Close then Open → Re-pick from getPorts → Choose port again / 上から順に試す</li>
+          <li>Copy the log / ログをコピーして共有</li>
+        </ol>
+        <p class="kv" id="env"></p>
+        <div class="buttons">
+          <button class="btn primary" id="pick">Choose port</button>
+          <button class="btn" id="getports">Re-pick from getPorts()</button>
+          <button class="btn" id="open">Open</button>
+          <button class="btn" id="status">Status</button>
+          <button class="btn" id="close">Close</button>
+          <button class="btn" id="forget">Forget</button>
+          <button class="btn ghost" id="state">Show state</button>
+          <button class="btn ghost" id="copy">Copy log</button>
+        </div>
+        <p>
+          <label class="inline"><input type="checkbox" id="auto" /> Auto: on <code>connect</code> event, Open → Status</label>
+          <label class="inline"><input type="checkbox" id="keep" checked /> Keep the port open between steps</label>
+        </p>
+      </section>
+      <section class="card">
+        <pre class="log" id="log"></pre>
+      </section>
+    </div>
+    <script type="module" src="./src/bt-diag.ts"></script>
+  </body>
+</html>
