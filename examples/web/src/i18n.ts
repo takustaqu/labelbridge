@@ -6,8 +6,7 @@ export type Lang = 'en' | 'ja'
 const en = {
   title: 'labelbridge — print labels from the browser',
   headline: 'Print labels dot by dot, straight from the browser.',
-  intro:
-    'Connect a label printer over USB (WebUSB) or Bluetooth (Web Serial), read the tape, and print text or images where one pixel is exactly one dot — no vendor drivers. Works in Chromium-based desktop browsers.',
+  intro: 'Use the label printer you already have from unsupported environments, right in the browser.\nPrint dot by dot, exactly as you designed it.',
   previewTitle: 'Preview',
   logTitle: 'Log',
   printer: 'Printer',
@@ -65,8 +64,7 @@ type Dict = typeof en
 const ja: Dict = {
   title: 'labelbridge — ブラウザから印刷するサンプル',
   headline: 'ブラウザから、1 ドット単位でラベルを印刷。',
-  intro:
-    'ラベルプリンターに USB（WebUSB）か Bluetooth（Web Serial）でつなぎ、テープを読み取って、テキストや画像を 1 画素 = 1 ドットで印刷します。純正ドライバーは要りません。Chromium 系のデスクトップ版ブラウザで動きます。',
+  intro: 'お手持ちのラベルプリンターを、非対応環境やブラウザから使えます。\n印字もドットバイドットで思いのまま。',
   previewTitle: 'プレビュー',
   logTitle: 'ログ',
   printer: 'プリンター',

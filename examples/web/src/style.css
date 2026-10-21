@@ -118,6 +118,7 @@ select {
 }
 .lede {
   max-width: 62ch;
+  white-space: pre-line;
   margin: 0 0 28px;
   color: rgb(243 242 238 / 0.72);
   font-size: 1.05rem;
