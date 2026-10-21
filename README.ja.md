@@ -157,7 +157,7 @@ cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixture
 
 - **Windows での USB 接続**：OS のプリンタードライバーが USB 接続のプリンターを掴むため、WinUSB への差し替えが必要です（未検証）。
 - **Linux での USB 接続**：`usblp` を外す必要があります（未検証）。
-- **macOS + Chromium 系ブラウザでの Bluetooth 接続**：Bluetooth のリンクが一度切れると、ブラウザを再起動するまで Web Serial で開けなくなります（[docs/protocol.md](docs/protocol.md) §3）。
+- **ブラウザからの最初の Bluetooth 接続**：Bluetooth のリンクが張られていない状態では、ポートを開く最初の試みがリンク確立待ちで約 10 秒後に失敗します。ライブラリが自動で再試行するので、最初の接続だけ時間がかかります。リンクが切れた場合（プリンターの電源を切ったなど）は、ライブラリがポートを閉じ、次の操作で接続し直します。ブラウザの再起動は要りません（[docs/protocol.md](docs/protocol.md) §3）。
 - **ブラウザからの LAN 接続**：LAN 接続の機種は制御に UDP を使うため、ブラウザからは直接送れません。Node（Electron のメインプロセスやサーバー）から送ってください。
 
 ## 謝辞

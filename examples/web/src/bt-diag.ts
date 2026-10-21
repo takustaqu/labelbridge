@@ -59,9 +59,20 @@ function watch(p: SerialPort) {
 }
 
 // ---- steps ----
-async function step<T>(name: string, fn: () => Promise<T>): Promise<T | undefined> {
+// 1 度に 1 つの操作だけを走らせる（終わる前に次を押すと結果が混ざるため、実行中はボタンを無効にする）
+let busy = false
+function setBusy(name: string | null) {
+  busy = name !== null
+  $('busy').textContent = name ? `running: ${name} … (wait for "ok" / "failed")` : 'idle'
+  for (const b of document.querySelectorAll<HTMLButtonElement>('.buttons button')) {
+    if (b.id !== 'state' && b.id !== 'copy') b.disabled = busy
+  }
+}
+
+async function step<T>(name: string, fn: () => Promise<T>, nested = false): Promise<T | undefined> {
   const s = performance.now()
   log(`> ${name} …`)
+  if (!nested) setBusy(name)
   try {
     const r = await fn()
     log(`  ${name} ok (${Math.round(performance.now() - s)} ms)${r === undefined ? '' : `: ${String(r)}`}`, 'ok')
@@ -71,6 +82,7 @@ async function step<T>(name: string, fn: () => Promise<T>): Promise<T | undefine
     return undefined
   } finally {
     log(`  state: ${describe(port)}`)
+    if (!nested) setBusy(null)
   }
 }
 
@@ -157,6 +169,17 @@ $('getports').addEventListener('click', () =>
   }),
 )
 $('open').addEventListener('click', () => step('open', openPort))
+// ライブラリの open と同じく、リンク確立待ちで失敗したら 1.5 秒おいて 3 回まで試す
+$('open3').addEventListener('click', () =>
+  step('open ×3', async () => {
+    for (let i = 1; i <= 3; i++) {
+      const ok = await step(`open attempt ${i}`, openPort, true)
+      if (ok !== undefined || port?.readable) return `opened on attempt ${i}`
+      await new Promise((r) => setTimeout(r, 1500))
+    }
+    throw new Error('all 3 attempts failed')
+  }),
+)
 $('status').addEventListener('click', () => withOptionalClose('status', readStatus))
 $('close').addEventListener('click', () => step('close', closePort))
 $('forget').addEventListener('click', () =>

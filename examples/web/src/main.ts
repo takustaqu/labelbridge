@@ -68,6 +68,7 @@ function log(message: string, kind: 'info' | 'ok' | 'error' = 'info') {
 
 async function readPrinter() {
   if (!printer) return
+  log(t('reading'))
   const r = await printer.read()
   showPrinter(r.status, r.area)
   area = r.area

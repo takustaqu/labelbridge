@@ -56,7 +56,7 @@ See [docs/typescript.md](https://github.com/takustaqu/labelbridge/blob/main/docs
 ## Known limitations
 
 - On Windows the OS printer driver claims USB printers, so WebUSB cannot open them (the device has to be switched to WinUSB; not verified).
-- In Chromium on macOS, once the Bluetooth link drops, Web Serial may not open the port again until the browser is restarted.
+- Over Bluetooth, the first connection takes about 10 seconds while the link comes up (the first attempt fails and is retried automatically). After the link drops, the port is closed and reopened on the next operation; no browser restart is needed.
 - LAN printers use UDP for control, which browsers cannot send. Use them from `@takustaqu/labelbridge/node`.
 
 ## License

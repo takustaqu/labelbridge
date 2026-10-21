@@ -157,7 +157,7 @@ cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixture
 
 - **USB on Windows**: the OS printer driver claims USB printers, so the device has to be switched to WinUSB (not verified).
 - **USB on Linux**: `usblp` has to be detached (not verified).
-- **Bluetooth with Chromium-based browsers on macOS**: once the Bluetooth link drops, Web Serial cannot open the port again until the browser is restarted ([docs/protocol.md](docs/protocol.md) §3).
+- **First Bluetooth connection from a browser**: when the Bluetooth link is not up yet, the first attempt to open the port fails after about 10 seconds while the link comes up; the library retries automatically, so the first connection takes a while. If the link drops (for example, the printer is turned off), the library closes the port and reconnects on the next operation; no browser restart is needed ([docs/protocol.md](docs/protocol.md) §3).
 - **LAN from a browser**: LAN printers use UDP for control, which browsers cannot send. Send from Node instead (the Electron main process or a server).
 
 ## Acknowledgements

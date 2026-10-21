@@ -194,7 +194,12 @@ ESC/P2 の公開仕様から候補になるコマンドを組み合わせ、要�
   - `openRFCOMMChannelSync` は、ランループの回っているメインスレッドから呼ぶ ✅。
 - **ブラウザ（Chromium 系の Web Serial）**
   - `allowedBluetoothServiceClassIds` に SPP の UUID を渡すと開ける ✅。
-  - ただし macOS では、**リンクが一度切れると、ブラウザを再起動するまで開けなくなる** ✅（`SerialPort.forget()` でも回復しない）。
+  - リンクが張られていない状態（`port.connected === false`）からの**最初の `open` は、約 10 秒後に `NetworkError: Failed to open serial port` で失敗する**。`open` を始めて 1 秒前後で `connect` イベントが届き `connected` が `true` になるので、直後に開き直すと 0.25 秒ほどで開ける ✅。
+  - **リンクが切れても（電源オフなど）、Chrome はポートを閉じない**。`disconnect` イベントは届くが、`readable` / `writable` が残った「半開き」になり、次の `open` は `InvalidStateError: The port is already open` で失敗する。読み取りは `NetworkError: The device has been lost` になる。選び直し（`requestPort` / `getPorts`）でも同じポートが返る ✅。
+  - 半開きのポートは `close()` で閉じられ（10 ms ほど）、その後は上の手順（最初の `open` の失敗 → 再試行）で開き直せる。ブラウザの再起動は要らない ✅。以前に「再起動するまで開けない」と見えていたのは、この半開きを閉じていなかったため。
+  - ライブラリ（`WebSerialChannel`）は、`open` の前に半開きのポートを閉じ、`disconnect` を受けた時点でも閉じる。`open` は 3 回まで再試行する。
+  - 確認環境: macOS、Chromium 155（Brave）、2026-10-21。調査には `examples/web/bt-diag.html`（各操作の結果とイベントを記録する診断ページ）を使った。
+  - Android 版 Chrome は 137 から Web Serial の Bluetooth RFCOMM に対応している（[Chromium の Intent to Ship](https://groups.google.com/a/chromium.org/g/blink-dev/c/BqUGCcurReE/m/XbuAYkRxEQAJ)）。ただし Android では `connected` と `connect` / `disconnect` イベントが完全には使えないとされている ❓ 未検証。
   - 開いたまま止まると、ブラウザを終了するまで SPP が解放されない。そのため `open` は 15 秒、送信は 30 秒で打ち切り、必ず `close` する。
 
 ### 手順（commandLevel 5） ✅

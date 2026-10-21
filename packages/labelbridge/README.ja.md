@@ -56,7 +56,7 @@ API の詳細は [docs/typescript.md](https://github.com/takustaqu/labelbridge/b
 ## 既知の制約
 
 - Windows では OS のプリンタードライバーが USB 接続のプリンターを掴むため、WebUSB で開けません（WinUSB への差し替えが必要。未検証）。
-- macOS の Chromium では、Bluetooth のリンクが一度切れると、ブラウザを再起動するまで Web Serial で開けなくなることがあります。
+- Bluetooth では、最初の接続がリンク確立待ちで約 10 秒かかります（最初の試みが失敗し、自動で再試行します）。リンクが切れた後は、ポートを閉じて次の操作で開き直します。ブラウザの再起動は要りません。
 - LAN 接続の機種は制御に UDP を使うため、ブラウザからは使えません。`@takustaqu/labelbridge/node` から使います。
 
 ## ライセンス
