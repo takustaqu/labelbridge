@@ -1,7 +1,7 @@
 {
   "name": "@takustaqu/labelbridge",
   "version": "0.1.0",
-  "description": "キングジム製ラベルプリンターの一部機種を、純正ドライバーなしでドットバイドット印刷するライブラリ。ブラウザ（WebUSB / Web Serial）と Node（LAN）に対応",
+  "description": "Dot-by-dot printing for some KING JIM label printers without vendor drivers. Browser (WebUSB / Web Serial) and Node (LAN).",
   "keywords": [
     "label-printer",
     "webusb",
@@ -12,7 +12,7 @@
   ],
   "license": "MIT OR Apache-2.0",
   "author": "takustaqu",
-  "homepage": "https://github.com/takustaqu/labelbridge#readme",
+  "homepage": "https://takustaqu.github.io/labelbridge/",
   "bugs": {
     "url": "https://github.com/takustaqu/labelbridge/issues"
   },
@@ -32,7 +32,8 @@
     "dist",
     "LICENSE-MIT",
     "LICENSE-APACHE",
-    "README.md"
+    "README.md",
+    "README.ja.md"
   ],
   "publishConfig": {
     "access": "public",

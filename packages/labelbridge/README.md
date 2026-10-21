@@ -1,60 +1,64 @@
 # @takustaqu/labelbridge
 
-キングジム製ラベルプリンター「テプラ」PRO の一部機種を、メーカー純正のドライバーやアプリを使わずに扱うためのライブラリです。装着テープの幅と 1 行の印字可能ドット数を読み、1bpp 画像を**拡大縮小せずに 1 画素 = 1 ドット**で印刷します。
+**English** | [日本語](https://github.com/takustaqu/labelbridge/blob/main/packages/labelbridge/README.ja.md)
 
-> 非公式のライブラリで、株式会社キングジムとは関係ありません。「テプラ」「TEPRA」は株式会社キングジムの登録商標です。
+Drive some KING JIM "TEPRA" PRO label printers without the vendor's drivers or apps. It reads the loaded tape width and the number of printable dots per line, and prints a 1-bit image **dot by dot, never scaled: one pixel = one dot**.
+
+> This is an unofficial library and is not affiliated with KING JIM CO., LTD. "TEPRA" and "テプラ" are registered trademarks of KING JIM CO., LTD.
+
+**Demo:** <https://takustaqu.github.io/labelbridge/>
 
 ```bash
 npm install @takustaqu/labelbridge
 ```
 
-| import 先 | 動く場所 | 内容 |
+| Import | Runs in | Contents |
 |---|---|---|
-| `@takustaqu/labelbridge` | どこでも（DOM・Node 非依存） | 1bpp 画像、機種ごとの印字範囲、ジョブ生成、ステータス解釈 |
-| `@takustaqu/labelbridge/web` | ブラウザ | USB 接続（WebUSB）、Bluetooth 接続（Web Serial）、画像の変換 |
-| `@takustaqu/labelbridge/node` | Node / Electron のメインプロセス | LAN 接続（UDP/TCP 9100） |
+| `@takustaqu/labelbridge` | Anywhere (no DOM or Node dependency) | 1-bit images, print area per model, job encoding, status parsing |
+| `@takustaqu/labelbridge/web` | Browsers | USB (WebUSB), Bluetooth (Web Serial), image conversion |
+| `@takustaqu/labelbridge/node` | Node / Electron main process | LAN (UDP/TCP 9100) |
 
-| 機種 | 接続 | 動作確認 |
+| Printer | Connection | Verified |
 |---|---|---|
-| SR3500P | USB | 12mm テープで印字・カット |
-| SR-R2500P | Bluetooth SPP | 12mm テープで印字・カット |
-| SR5900P | LAN | 12mm テープで印字・カット |
+| SR3500P | USB | 12 mm tape: print and cut |
+| SR-R2500P | Bluetooth SPP | 12 mm tape: print and cut |
+| SR5900P | LAN | 12 mm tape: print and cut |
 
-## ブラウザ
+## Browser
 
-Chromium 系のデスクトップ版ブラウザで、`localhost` か HTTPS のページから使えます。
+Works in Chromium-based desktop browsers, on pages served from `localhost` or over HTTPS.
 
 ```ts
 import { blankImage } from '@takustaqu/labelbridge'
 import { requestPrinter } from '@takustaqu/labelbridge/web'
 
-// ボタンのクリックなど、ユーザー操作の中で呼ぶ
+// Call from a user gesture, such as a button click
 const printer = await requestPrinter('usb') // or 'serial'
-const { area } = await printer.read() // 装着テープと、1 行の印字可能ドット数
-const image = blankImage(300, area!.printableDots) // 幅 = ラベル長、高さ = 印字可能ドット数
-image.bits[0] = 1 // 1 = 黒
+const { area } = await printer.read() // loaded tape and printable dots per line
+const image = blankImage(300, area!.printableDots) // width = label length, height = printable dots
+image.bits[0] = 1 // 1 = black
 await printer.print(image, area!.tapeMm, { copies: 1 })
 ```
 
-## Node / Electron（LAN）
+## Node / Electron (LAN)
 
 ```ts
 import { blankImage } from '@takustaqu/labelbridge'
 import { printImageSr5900p, readSr5900p } from '@takustaqu/labelbridge/node'
 
-const host = '192.0.2.10' // プリンターの IP アドレスかホスト名
+const host = '192.0.2.10' // printer IP address or host name
 const { area } = await readSr5900p(host)
 await printImageSr5900p(host, blankImage(600, area!.printableDots), area!.tapeMm, { cut: 'full' })
 ```
 
-API の詳細は [docs/typescript.md](https://github.com/takustaqu/labelbridge/blob/main/docs/typescript.md)、プロトコルは [docs/protocol.md](https://github.com/takustaqu/labelbridge/blob/main/docs/protocol.md)、動くサンプルは [examples/web](https://github.com/takustaqu/labelbridge/tree/main/examples/web) を参照してください。
+See [docs/typescript.md](https://github.com/takustaqu/labelbridge/blob/main/docs/typescript.md) for the API, [docs/protocol.md](https://github.com/takustaqu/labelbridge/blob/main/docs/protocol.md) for the protocol (both in Japanese), and [examples/web](https://github.com/takustaqu/labelbridge/tree/main/examples/web) for a working sample.
 
-## 既知の制約
+## Known limitations
 
-- Windows では OS のプリンタードライバーが USB 接続のプリンターを掴むため、WebUSB で開けません（WinUSB への差し替えが必要。未検証）。
-- macOS の Chromium では、Bluetooth のリンクが一度切れると、ブラウザを再起動するまで Web Serial で開けなくなることがあります。
-- LAN 接続の機種は制御に UDP を使うため、ブラウザからは使えません。`@takustaqu/labelbridge/node` から使います。
+- On Windows the OS printer driver claims USB printers, so WebUSB cannot open them (the device has to be switched to WinUSB; not verified).
+- In Chromium on macOS, once the Bluetooth link drops, Web Serial may not open the port again until the browser is restarted.
+- LAN printers use UDP for control, which browsers cannot send. Use them from `@takustaqu/labelbridge/node`.
 
-## ライセンス
+## License
 
-MIT または Apache-2.0 のいずれか（同梱の `LICENSE-MIT`、`LICENSE-APACHE`）。
+Either MIT or Apache-2.0, at your option (`LICENSE-MIT`, `LICENSE-APACHE` in the package).

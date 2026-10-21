@@ -1,4 +1,4 @@
-// ブラウザからラベルを印刷するサンプル。
+// ブラウザからラベルを印刷するサンプル（GitHub Pages のデモを兼ねる。表示は英語が既定で、日本語に切り替えられる）。
 //
 //   1. プリンターにつなぎ、装着テープと印字可能ドット数を読む
 //   2. その高さ（ドット数）ぴったりの 1bpp 画像を作る（テキストを描くか、画像ファイルを読む）
@@ -8,7 +8,6 @@
 
 import {
   MODELS,
-  describeStatus,
   printArea,
   printAreas,
   type CutMode,
@@ -19,6 +18,7 @@ import {
   type PrinterStatus,
 } from '@takustaqu/labelbridge'
 import { imageFromBitmap, imageToDataUrl, requestPrinter, webSerialSupported, webUsbSupported, type WebPrinter } from '@takustaqu/labelbridge/web'
+import { applyStatic, dict, setLang, t, type Lang } from './i18n'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
@@ -73,7 +73,14 @@ async function readPrinter() {
   await rebuildImage()
 }
 
-const CUT_LABELS: Record<CutMode, string> = { full: 'フルカット', half: 'ハーフカット', none: 'カットしない' }
+const cutLabel = (m: CutMode) => t(m === 'full' ? 'cutFull' : m === 'half' ? 'cutHalf' : 'cutNone')
+
+function describe(s: PrinterStatus): string {
+  const hex = (n: number) => `0x${n.toString(16).padStart(2, '0')}`
+  const st = dict().states[s.state] ?? hex(s.state)
+  const er = dict().errors[s.error] ?? hex(s.error)
+  return t('statusText', st, er, s.tapeMm ? `${s.tapeMm} mm` : t('none'))
+}
 
 /** カットの選択肢を能力表（MODELS[model].fullCut / halfCut）から作る。 */
 function showCutModes(model: ModelId | null) {
@@ -84,24 +91,27 @@ function showCutModes(model: ModelId | null) {
     ...modes.map((m) => {
       const o = document.createElement('option')
       o.value = m
-      o.textContent = CUT_LABELS[m]
+      o.textContent = cutLabel(m)
       return o
     }),
   )
   ui.cut.value = modes.includes(keep as CutMode) ? keep : modes[0]!
 }
 
+let lastStatus: PrinterStatus | null = null
+
 function showPrinter(status: PrinterStatus, a: PrintArea | null) {
-  ui.model.textContent = printer ? `${printer.model}（${printer.connection === 'usb' ? 'USB' : 'シリアル'}）` : '—'
-  ui.status.textContent = describeStatus(status)
-  ui.tape.textContent = status.tapeMm ? `${status.tapeMm} mm` : 'なし'
+  lastStatus = status
+  ui.model.textContent = printer ? `${printer.model} (${t(printer.connection === 'usb' ? 'connUsb' : 'connSerial')})` : '—'
+  ui.status.textContent = describe(status)
+  ui.tape.textContent = status.tapeMm ? `${status.tapeMm} mm` : t('none')
   showArea(a)
 }
 
 function showArea(a: PrintArea | null) {
   if (a) {
-    ui.dots.textContent = `${a.printableDots} ドット（${a.printableMm.toFixed(1)} mm）${a.verified ? '' : ' ※推定値'}`
-    ui.dpi.textContent = `${a.dpi} dpi（1 ドット = ${a.dotMm.toFixed(3)} mm）`
+    ui.dots.textContent = `${a.printableDots} ${t('dotsUnit')} (${a.printableMm.toFixed(1)} mm)${a.verified ? '' : t('estimated')}`
+    ui.dpi.textContent = `${a.dpi} dpi (${t('oneDot')} = ${a.dotMm.toFixed(3)} mm)`
   } else {
     ui.dots.textContent = '—'
     ui.dpi.textContent = '—'
@@ -111,10 +121,10 @@ function showArea(a: PrintArea | null) {
 // 接続方式だけ選ぶ。機種は USB の product ID や能力表からライブラリが決める。
 async function connect(connection: 'usb' | 'serial') {
   try {
-    if (connection === 'usb' && !webUsbSupported()) throw new Error('このブラウザは WebUSB に対応していません')
-    if (connection === 'serial' && !webSerialSupported()) throw new Error('このブラウザは Web Serial に対応していません')
+    if (connection === 'usb' && !webUsbSupported()) throw new Error(t('noWebUsb'))
+    if (connection === 'serial' && !webSerialSupported()) throw new Error(t('noWebSerial'))
     printer = await requestPrinter(connection)
-    log(`${printer.model} に接続しました`)
+    log(t('connected', printer.model))
     showCutModes(printer.model)
     ui.manualModel.value = ''
     useManualArea()
@@ -130,7 +140,7 @@ ui.connectSerial.addEventListener('click', () => connect('serial'))
 ui.refresh.addEventListener('click', () => readPrinter().catch((e) => log(String(e), 'error')))
 
 // プリンターなしで印字範囲だけ指定する（能力表 printAreas / printArea から引く）。印刷には接続が要る。
-function useManualArea() {
+function useManualArea(relabel = false) {
   const model = ui.manualModel.value as ModelId | ''
   if (!model) {
     ui.manualTape.disabled = true
@@ -138,21 +148,23 @@ function useManualArea() {
     return
   }
   const tapes = printAreas(model)
-  if (!tapes.some((t) => String(t.tapeMm) === ui.manualTape.value)) {
+  const keep = ui.manualTape.value
+  const has = (v: string) => tapes.some((tape) => String(tape.tapeMm) === v)
+  if (relabel || !has(keep)) {
     ui.manualTape.replaceChildren(
-      ...tapes.map((t) => {
+      ...tapes.map((tape) => {
         const o = document.createElement('option')
-        o.value = String(t.tapeMm)
-        o.textContent = `${t.tapeMm} mm → ${t.printableDots} ドット${t.verified ? '' : '（推定）'}`
+        o.value = String(tape.tapeMm)
+        o.textContent = `${tape.tapeMm} mm → ${tape.printableDots} ${t('dotsUnit')}${tape.verified ? '' : t('estimated')}`
         return o
       }),
     )
-    ui.manualTape.value = tapes.some((t) => t.tapeMm === 12) ? '12' : (ui.manualTape.options[0]?.value ?? '')
+    ui.manualTape.value = has(keep) ? keep : has('12') ? '12' : (ui.manualTape.options[0]?.value ?? '')
   }
   ui.manualTape.disabled = false
   area = printArea(model, Number(ui.manualTape.value))
-  ui.model.textContent = `${model}（手で指定）`
-  ui.status.textContent = '未接続'
+  ui.model.textContent = `${model} (${t('manualModel')})`
+  ui.status.textContent = t('notConnected')
   ui.tape.textContent = `${area.tapeMm} mm`
   showArea(area)
   void rebuildImage()
@@ -162,8 +174,8 @@ for (const id of Object.keys(MODELS)) {
   o.value = o.textContent = id
   ui.manualModel.append(o)
 }
-ui.manualModel.addEventListener('change', useManualArea)
-ui.manualTape.addEventListener('change', useManualArea)
+ui.manualModel.addEventListener('change', () => useManualArea())
+ui.manualTape.addEventListener('change', () => useManualArea())
 
 // ---- 2. ラベル ----
 
@@ -193,7 +205,7 @@ async function rebuildImage() {
   image = null
   ui.print.disabled = true
   if (!area) {
-    ui.previewSize.textContent = 'プリンターにつないで印字可能ドット数を読むと、プレビューを作ります'
+    ui.previewSize.textContent = t('needArea')
     ui.preview.removeAttribute('src')
     return
   }
@@ -204,13 +216,13 @@ async function rebuildImage() {
         ? drawText(ui.text.value, area.printableDots, Number(ui.fontPx.value), Number(ui.pad.value))
         : (ui.file.files?.[0] ?? null)
     if (!source) {
-      ui.previewSize.textContent = '画像ファイルを選んでください'
+      ui.previewSize.textContent = t('pickImage')
       ui.preview.removeAttribute('src')
       return
     }
     image = await imageFromBitmap(source, area.printableDots, level)
     ui.preview.src = imageToDataUrl(image, 3)
-    ui.previewSize.textContent = `${image.width} × ${image.height} ドット（${(image.width * area.dotMm).toFixed(1)} × ${(image.height * area.dotMm).toFixed(1)} mm）`
+    ui.previewSize.textContent = `${image.width} × ${image.height} ${t('dotsUnit')} (${(image.width * area.dotMm).toFixed(1)} × ${(image.height * area.dotMm).toFixed(1)} mm)`
     ui.print.disabled = printer === null
   } catch (e) {
     ui.preview.removeAttribute('src')
@@ -251,5 +263,23 @@ ui.print.addEventListener('click', async () => {
   }
 })
 
+// ---- 表示言語 ----
+
+function refreshTexts() {
+  applyStatic()
+  showCutModes(printer?.model ?? null)
+  if (printer && lastStatus) showPrinter(lastStatus, area)
+  else if (ui.manualModel.value) useManualArea(true)
+  void rebuildImage()
+}
+
+for (const b of document.querySelectorAll<HTMLButtonElement>('[data-lang]')) {
+  b.addEventListener('click', () => {
+    setLang(b.dataset.lang as Lang)
+    refreshTexts()
+  })
+}
+
+applyStatic()
 showCutModes(null)
 void rebuildImage()

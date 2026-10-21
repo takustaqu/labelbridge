@@ -1,76 +1,89 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>labelbridge web example</title>
+    <title>labelbridge demo</title>
+    <meta name="description" content="Print labels dot by dot from the browser over WebUSB or Web Serial with labelbridge." />
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
     <main>
-      <h1>labelbridge — ブラウザから印刷するサンプル</h1>
+      <header class="top">
+        <h1 data-i18n="title">labelbridge — print labels from the browser</h1>
+        <nav class="lang" aria-label="Language">
+          <button type="button" data-lang="en">English</button>
+          <button type="button" data-lang="ja">日本語</button>
+        </nav>
+      </header>
+      <p class="note" data-i18n="intro"></p>
       <p class="note">
-        Chromium 系ブラウザ（デスクトップ版）で動きます。USB は WebUSB、Bluetooth（SPP）は Web Serial を使います。
-        画像は拡大縮小せず、1 画素 = 1 ドットで印字します。
+        <a href="https://github.com/takustaqu/labelbridge">GitHub</a> ·
+        <a href="https://www.npmjs.com/package/@takustaqu/labelbridge">npm</a>
       </p>
 
       <section>
-        <h2>1. プリンター</h2>
+        <h2 data-i18n="printer"></h2>
         <div class="row">
-          <button id="connect-usb" type="button">USB で接続</button>
-          <button id="connect-serial" type="button">シリアル（Bluetooth SPP）で接続</button>
-          <button id="refresh" type="button" disabled>状態を読み直す</button>
+          <button id="connect-usb" type="button" data-i18n="connectUsb"></button>
+          <button id="connect-serial" type="button" data-i18n="connectSerial"></button>
+          <button id="refresh" type="button" disabled data-i18n="refresh"></button>
         </div>
         <div class="row note">
-          プリンターなしでプレビューだけ見る:
+          <span data-i18n="manual"></span>
           <select id="manual-model">
-            <option value="">（接続したプリンターの値を使う）</option>
+            <option value="" data-i18n="manualNone"></option>
           </select>
           <select id="manual-tape" disabled></select>
         </div>
         <dl id="printer-info" class="info">
-          <dt>機種</dt><dd id="info-model">—</dd>
-          <dt>状態</dt><dd id="info-status">—</dd>
-          <dt>テープ幅</dt><dd id="info-tape">—</dd>
-          <dt>印字可能ドット数</dt><dd id="info-dots">—</dd>
-          <dt>解像度</dt><dd id="info-dpi">—</dd>
+          <dt data-i18n="model"></dt><dd id="info-model">—</dd>
+          <dt data-i18n="status"></dt><dd id="info-status">—</dd>
+          <dt data-i18n="tape"></dt><dd id="info-tape">—</dd>
+          <dt data-i18n="dots"></dt><dd id="info-dots">—</dd>
+          <dt data-i18n="dpi"></dt><dd id="info-dpi">—</dd>
         </dl>
       </section>
 
       <section>
-        <h2>2. ラベル</h2>
+        <h2 data-i18n="label"></h2>
         <div class="row">
-          <label><input type="radio" name="source" value="text" checked /> テキスト</label>
-          <label><input type="radio" name="source" value="image" /> 画像ファイル</label>
+          <label><input type="radio" name="source" value="text" checked /> <span data-i18n="text"></span></label>
+          <label><input type="radio" name="source" value="image" /> <span data-i18n="imageFile"></span></label>
         </div>
         <div id="source-text" class="row">
           <input id="text" type="text" value="Hello, label!" size="30" />
-          <label>文字サイズ（ドット） <input id="font-px" type="number" value="48" min="8" max="400" /></label>
-          <label>左右の余白（ドット） <input id="pad" type="number" value="16" min="0" max="400" /></label>
+          <label><span data-i18n="fontPx"></span> <input id="font-px" type="number" value="48" min="8" max="400" /></label>
+          <label><span data-i18n="pad"></span> <input id="pad" type="number" value="16" min="0" max="400" /></label>
         </div>
         <div id="source-image" class="row" hidden>
           <input id="file" type="file" accept="image/png,image/bmp,image/gif,image/webp" />
-          <span class="note">高さが印字可能ドット数を超える画像はエラーになります（縮小しません）</span>
+          <span class="note" data-i18n="imageNote"></span>
         </div>
         <div class="row">
-          <label>二値化のしきい値 <input id="threshold" type="range" min="1" max="254" value="128" /> <span id="threshold-value">128</span></label>
+          <label><span data-i18n="threshold"></span> <input id="threshold" type="range" min="1" max="254" value="128" /> <span id="threshold-value">128</span></label>
         </div>
-        <p class="note">プレビュー（3 倍に拡大。1 マス = 1 ドット）</p>
+        <p class="note" data-i18n="previewNote"></p>
         <div class="preview"><img id="preview" alt="" /></div>
         <p id="preview-size" class="note">—</p>
       </section>
 
       <section>
-        <h2>3. 印刷</h2>
+        <h2 data-i18n="print"></h2>
         <div class="row">
-          <label>枚数 <input id="copies" type="number" value="1" min="1" max="20" /></label>
-          <label>濃度 <input id="density" type="number" value="0" min="-5" max="5" /></label>
-          <label>カット <select id="cut"></select></label>
-          <label>前後の余白（ドット） <input id="margin" type="number" value="0" min="0" max="500" /></label>
-          <button id="print" type="button" disabled>印刷</button>
+          <label><span data-i18n="copies"></span> <input id="copies" type="number" value="1" min="1" max="20" /></label>
+          <label><span data-i18n="density"></span> <input id="density" type="number" value="0" min="-5" max="5" /></label>
+          <label><span data-i18n="cut"></span> <select id="cut"></select></label>
+          <label><span data-i18n="margin"></span> <input id="margin" type="number" value="0" min="0" max="500" /></label>
+          <button id="print" type="button" disabled data-i18n="printButton"></button>
         </div>
+        <p class="note" data-i18n="libNote"></p>
         <pre id="log" class="log"></pre>
       </section>
+
+      <footer class="note">
+        Unofficial; not affiliated with KING JIM CO., LTD. "TEPRA" is a registered trademark of KING JIM CO., LTD.
+      </footer>
     </main>
     <script type="module" src="./src/main.ts"></script>
   </body>

@@ -75,3 +75,16 @@ section {
 .log .error {
   color: #d33;
 }
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  align-items: center;
+  justify-content: space-between;
+}
+.lang button[aria-pressed='true'] {
+  font-weight: bold;
+}
+footer {
+  margin: 24px 0 8px;
+}
