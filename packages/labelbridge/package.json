@@ -1,6 +1,6 @@
 {
   "name": "@takustaqu/labelbridge",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Dot-by-dot printing for some KING JIM label printers without vendor drivers. Browser (WebUSB / Web Serial) and Node (LAN).",
   "keywords": [
     "label-printer",
