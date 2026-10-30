@@ -163,6 +163,8 @@ await printImagesSr5900p(host, sr5900pCalibrationLabels(9), 9, { cut: 'half', ca
 
 既定値は 9mm テープで合わせたもの（docs/protocol.md §4）。
 
+ジョブの先頭では、本体がヘッドとカッターの間の空白を送って切る（1 枚のジョブでは毎回、切れ端が落ちる）。`leadingCut: 'half'` にすると、そこをハーフカットにして、ラベルにつながったまま残せる。
+
 ### 縦向きのラベル
 
 テープを縦に貼るラベルは、縦長の画像（x = テープの幅方向、y = 長さ方向、上がラベルの始まり）で作り、`rotateImage(image, 'ccw')`（`@takustaqu/labelbridge`）で印刷の向きにしてから送る。印刷したテープは、先頭を上にすれば画像のとおりに読める。

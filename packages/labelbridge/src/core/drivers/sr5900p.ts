@@ -35,11 +35,17 @@ export const SR5900P_DEFAULT_CALIBRATION: Sr5900pCalibration = { headGapDots: 33
  */
 export interface Sr5900pJob extends LabelJob {
   calibration?: Partial<Sr5900pCalibration>
+  /**
+   * ジョブの先頭のカット（既定 'full'）。本体はジョブの先頭で、ヘッドとカッターの間の空白を送って切る。
+   * 'full' はそれを切れ端として落とし、'half' はハーフカットにして、ラベルにつながったまま残す（docs/protocol.md §4）
+   */
+  leadingCut?: 'full' | 'half'
 }
 
 /** SR5900P の印刷オプション（共通の `JobOptions` ＋ 校正値） */
 export interface Sr5900pOptions extends JobOptions {
   calibration?: Partial<Sr5900pCalibration>
+  leadingCut?: 'full' | 'half'
 }
 
 /** ジョブの並べ方。dummy なら先頭に空のページを入れる。pads は各ラベルの [前, 後ろ] に足す空白（ドット）。 */
@@ -103,6 +109,7 @@ export function encodeSr5900pPages(images: MonoImage[], job: Sr5900pJob): Uint8A
     if (image.height > dots) throw new Error(`画像の高さ ${image.height} が印字可能幅 ${dots} を超えています`)
   // [先頭, ラベルの間, ?, 末尾]。'half' はラベルの間だけハーフカット（実機で確認した値）
   const cut = { full: [1, 1, 1, 1], half: [1, 2, 1, 1], none: [0, 0, 0, 0] }[mode]
+  if (mode !== 'none' && job.leadingCut === 'half') cut[0] = 2
   const density = Math.max(-5, Math.min(5, job.density ?? 0))
   const head = [0x1b, 0x2e, 0x00, 0x00, 0x00, 0x01, ...u16le(dots)]
   const parts: ArrayLike<number>[] = [frame(0x40), frame(0x7b, [0x00, 0x00, 0x53, 0x54]), frame(0x43, cut), frame(0x44, [density + 5]), frame(0x47)]

@@ -98,6 +98,15 @@ fn main() {
             })
             .unwrap(),
     );
+    // 先頭をハーフカットにする（先頭の空白をつながったまま残す）
+    let sr5900p = Sr5900p {
+        leading_half_cut: true,
+        ..Default::default()
+    };
+    write(
+        "sr5900p-12mm-leadhalf.bin",
+        &sr5900p.encode_job(&job(144)).unwrap(),
+    );
     // 違うラベル 2 枚を 1 ジョブに（ラベルの間はハーフカット）
     let (a, b) = (pattern(50, 144).transpose(), pattern(30, 144).transpose());
     write(

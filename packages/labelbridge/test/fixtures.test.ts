@@ -54,6 +54,7 @@ describe('TS encoders match the Rust drivers byte for byte', () => {
       fixture('sr5900p-12mm-margin.bin'),
     )
     expectSame(encodeSr5900pPages([pattern(50, 144), pattern(30, 144)], { tapeMm: 12, cut: 'half' }), fixture('sr5900p-12mm-pages.bin'))
+    expectSame(encodeSr5900p(pattern(50, 144), { tapeMm: 12, leadingCut: 'half' }), fixture('sr5900p-12mm-leadhalf.bin'))
     const p = srR2500pParts(pattern(50, 72), { tapeMm: 12, cut: 'none', copies: 2, density: 3, marginDots: 5 })
     expectSame(flattenSrR2500pPages(p), fixture('srr2500p-12mm-opts.bin'))
   })

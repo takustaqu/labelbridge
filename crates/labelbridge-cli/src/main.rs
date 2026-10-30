@@ -52,6 +52,7 @@ options:
   --tape MM      テープ幅。省略時は実機から読む
   --copies N     枚数（既定 1）
   --cut MODE     full | half | none（既定 full。half は sr5900p のみ）
+  --leading-cut MODE  full | half（sr5900p。既定 full。half は先頭の空白を切り落とさず、ハーフカットでつなげておく）
   --density N    濃度 -5..5（既定 0。sr5900p は未対応）
   --margin DOTS  ラベル前後の余白（ドット。sr5900p は各ラベルの前後に見える余白で、既定は本体の空白の幅）
   --threshold T  二値化のしきい値 0-255（既定 128）
@@ -91,6 +92,8 @@ struct Opts {
     tape: Option<u32>,
     copies: u16,
     cut: Option<Cut>,
+    /// sr5900p: ジョブの先頭のカットをハーフカットにする
+    leading_half_cut: bool,
     density: i8,
     margin_dots: u32,
     /// --margin を指定したか（sr5900p は未指定なら本体の空白の幅）
@@ -145,6 +148,13 @@ impl Opts {
                         "none" => Cut::None,
                         v => return Err(format!("--cut: {v}")),
                     })
+                }
+                "--leading-cut" => {
+                    o.leading_half_cut = match val()? {
+                        "full" => false,
+                        "half" => true,
+                        v => return Err(format!("--leading-cut: {v}")),
+                    }
                 }
                 s if s.starts_with("--") => return Err(format!("unknown option {s}\n{USAGE}")),
                 s if o.file.is_none() => o.file = Some(s.into()),
@@ -316,6 +326,7 @@ fn print_label(o: &Opts, m: ModelId, label: MonoBitmap, tape_mm: u32) -> Result<
     let sr5900p = Sr5900p {
         density: o.density,
         margin_dots: o.margin_set.then_some(o.margin_dots),
+        leading_half_cut: o.leading_half_cut,
         ..Default::default()
     };
     let driver: &dyn PrinterDriver = match m {
@@ -558,8 +569,11 @@ mod tests {
             "12",
             "--cut",
             "half",
+            "--leading-cut",
+            "half",
         ])
         .unwrap();
+        assert!(o.leading_half_cut);
         assert_eq!(o.file.as_deref(), Some("a.png"));
         assert_eq!(o.model, Some(ModelId::SrR2500p));
         assert_eq!(o.tape, Some(12));

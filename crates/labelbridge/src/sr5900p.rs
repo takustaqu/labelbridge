@@ -14,6 +14,8 @@ pub struct Sr5900p {
     pub margin_dots: Option<u32>,
     /// カット位置の校正値。
     pub calibration: Calibration,
+    /// ジョブの先頭のカットをハーフカットにする（先頭の空白を切れ端として落とさず、ラベルにつながったまま残す）。
+    pub leading_half_cut: bool,
 }
 
 /// カット位置の校正値（ドット）。既定値は実機（9mm）で合わせたもの（docs/protocol.md §4）。
@@ -173,7 +175,11 @@ impl Sr5900p {
         let mut out = Vec::new();
         out.extend(cmd::job_boundary());
         out.extend(cmd::start_job());
-        out.extend(cmd::frame(b'C', &cut_value(cut)));
+        let mut c = cut_value(cut);
+        if cut != Cut::None && self.leading_half_cut {
+            c[0] = 0x02;
+        }
+        out.extend(cmd::frame(b'C', &c));
         out.extend(cmd::density(self.density));
         out.extend(cmd::g());
         let pages: Vec<&MonoBitmap> = (0..copies.max(1))
