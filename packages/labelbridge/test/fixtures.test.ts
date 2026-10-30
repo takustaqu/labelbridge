@@ -3,7 +3,7 @@
 
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { concat, encodeSr3500p, encodeSr5900p, flattenSrR2500pPages, srR2500pParts, toHex, type MonoImage } from '../src/core'
+import { concat, encodeSr3500p, encodeSr5900p, encodeSr5900pPages, flattenSrR2500pPages, srR2500pParts, toHex, type MonoImage } from '../src/core'
 
 /** crates/labelbridge/examples/fixtures.rs の pattern() と同じ式。 */
 function pattern(width: number, height: number): MonoImage {
@@ -49,6 +49,11 @@ describe('TS encoders match the Rust drivers byte for byte', () => {
       encodeSr5900p(pattern(50, 144), { tapeMm: 12, cut: 'none', copies: 2, density: -1 }),
       fixture('sr5900p-12mm-opts.bin'),
     )
+    expectSame(
+      encodeSr5900p(pattern(50, 144), { tapeMm: 12, cut: 'half', copies: 2, marginDots: 5 }),
+      fixture('sr5900p-12mm-margin.bin'),
+    )
+    expectSame(encodeSr5900pPages([pattern(50, 144), pattern(30, 144)], { tapeMm: 12, cut: 'half' }), fixture('sr5900p-12mm-pages.bin'))
     const p = srR2500pParts(pattern(50, 72), { tapeMm: 12, cut: 'none', copies: 2, density: 3, marginDots: 5 })
     expectSame(flattenSrR2500pPages(p), fixture('srr2500p-12mm-opts.bin'))
   })

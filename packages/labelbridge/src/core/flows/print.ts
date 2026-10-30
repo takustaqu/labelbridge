@@ -222,7 +222,8 @@ export function flattenSrR2500pPages(parts: SrR2500pParts): Uint8Array {
 
 /**
  * hikalium/sr5900p と同じ手順: 状態 → 開始 → 0.5 秒 → TCP 接続 → 0.5 秒 → 通知 → 0.5 秒 → 送信
- * → 0.5 秒ごとに状態 → 終了。枚数はジョブのバイト列に入っている（`encodeSr5900p` の `copies`）。開始した後は失敗しても必ず終了(3) を送る。
+ * → 0.5 秒ごとに状態 → 終了。枚数はジョブのバイト列に入っている（`encodeSr5900p` の `copies`、
+ * または `encodeSr5900pPages`）。開始した後は失敗しても必ず終了(3) を送る。
  */
 export async function printSr5900p(
   ctrl: TprtControl,
@@ -257,12 +258,24 @@ export async function printSr5900p(
     } finally {
       await data.close()
     }
-    // 印字中（state ≠ 0）を見てから待機に戻るまで待つ。印字が始まらないまま 8 秒経ったら終わる
+    // 印字中（state ≠ 0）を見てから待機に戻るまで待つ。印字が始まらないまま 8 秒経ったら終わる。
+    // 印字中は状態の問い合わせに答えないことがある（UDP なので抜けることもある）。
+    // 応答のない時間が 30 秒を超えるまでは問い合わせ直す
     const t0 = clock.now()
     let seenBusy = false
+    let lastReply = clock.now()
     for (;;) {
       await clock.sleep(500)
-      const s = await status()
+      let s: PrinterStatus
+      try {
+        s = await status()
+        lastReply = clock.now()
+      } catch (e) {
+        if (!(e instanceof TimeoutError) || clock.now() - lastReply > 30000) throw e
+        // 応答が無いあいだは印字中とみなす
+        seenBusy = true
+        continue
+      }
       check(s)
       if (s.state !== 0) seenBusy = true
       else if (seenBusy || clock.now() - t0 > 8000) break

@@ -59,9 +59,10 @@ export type CutMode = 'full' | 'half' | 'none'
  * 機種ごとの扱い:
  * - `cut`: 能力表（`MODELS[model].fullCut` / `halfCut`）にない指定は `UnsupportedCutError`。
  *   SR3500P はジョブ終了で必ずカットするので、'full' / 'none' は受け付けるがバイト列には影響しない。
- * - `copies`: SR-R2500P / SR5900P はジョブの中で繰り返す。SR3500P のエンコーダは使わない
+ * - `copies`: SR-R2500P / SR5900P はジョブの中で繰り返す（SR5900P はラベルごとのページとして）。SR3500P のエンコーダは使わない
  *   （1 ジョブ = 1 枚。枚数は `printSr3500p` の `copies` が「SOFT_RESET → ジョブ」を繰り返す）。
- * - `marginDots`: 前後の空白（ドット）。SR3500P / SR-R2500P のみ。SR5900P で 0 より大きいとエラー。
+ * - `marginDots`: 前後の空白（ドット）。SR3500P / SR-R2500P は足す空白、SR5900P は各ラベルの前後に見える余白
+ *   （既定は本体の空白の幅。それより小さくすると先頭に空のページが入る。`sr5900pLayout`）。
  */
 export interface JobOptions {
   /** 既定 'full' */

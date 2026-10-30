@@ -1,11 +1,12 @@
 // Node から SR5900P へ印刷・状態取得する高水準 API。
 
 import {
-  encodeSr5900p,
   printArea,
+  encodeSr5900pPages,
   printSr5900p,
   readStatusSr5900p,
   type JobOptions,
+  type Sr5900pOptions,
   type MonoImage,
   type PrintArea,
   type PrinterStatus,
@@ -34,10 +35,24 @@ export async function printImageSr5900p(
   host: string,
   image: MonoImage,
   tapeMm: number,
-  opts: JobOptions = {},
+  opts: Sr5900pOptions = {},
   progress?: Progress,
 ): Promise<void> {
-  const job = encodeSr5900p(image, { ...opts, tapeMm })
+  return printImagesSr5900p(host, [image], tapeMm, opts, progress)
+}
+
+/**
+ * 複数のラベルを 1 ジョブで印刷する（ジョブの先頭の送りは 1 回だけ）。ラベルの間は `opts.cut`
+ * （'half' ならハーフカットでつながる）。`opts.copies` は全体を繰り返す。
+ */
+export async function printImagesSr5900p(
+  host: string,
+  images: MonoImage[],
+  tapeMm: number,
+  opts: Sr5900pOptions = {},
+  progress?: Progress,
+): Promise<void> {
+  const job = encodeSr5900pPages(images, { ...opts, tapeMm })
   const ctrl = new TprtUdpControl(host)
   try {
     await printSr5900p(ctrl, () => openTcpData(host), job, tapeMm, { progress })

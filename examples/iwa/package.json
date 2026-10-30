@@ -1,0 +1,22 @@
+{
+  "name": "labelbridge-example-iwa",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Isolated Web App sample: print to LAN label printers with Direct Sockets",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@takustaqu/labelbridge": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/w3c-web-serial": "^1.0.8",
+    "@types/w3c-web-usb": "^1.0.14",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.4"
+  }
+}

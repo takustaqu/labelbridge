@@ -10,7 +10,7 @@ npm install @takustaqu/labelbridge
 |---|---|---|
 | `@takustaqu/labelbridge` | どこでも（DOM・Node 非依存） | 1bpp 画像、機種の能力と印字範囲、3 機種のジョブ生成・ステータス解釈、印刷手順 |
 | `@takustaqu/labelbridge/web` | ブラウザ | WebUSB（SR3500P）、Web Serial（SR-R2500P）、画像との変換、高水準 API |
-| `@takustaqu/labelbridge/node` | Node / Electron のメインプロセス | UDP/TCP 9100（SR5900P）と、その高水準 API |
+| `@takustaqu/labelbridge/node` | Node / Electron のメインプロセス | UDP/TCP 9100（SR5900P）と、その高水準 API、mDNS でのプリンター探し |
 
 npm のパッケージは ESM と型定義（`dist/`。import 先ごとに `index` / `web` / `node`）。ワークスペース内では、`exports` が TypeScript のソース（`src/index.ts`）を直接指すので、ビルドせずにテストやサンプルから使える（公開時だけ pnpm の `publishConfig` で `dist/` に差し替わる）。
 
@@ -18,7 +18,7 @@ npm のパッケージは ESM と型定義（`dist/`。import 先ごとに `inde
 |---|---|---|---|---|
 | SR3500P | USB | `@takustaqu/labelbridge/web`（WebUSB） | —（Rust の `labelbridge-transport` を使う） | 印字・カット・QR |
 | SR-R2500P | Bluetooth SPP | `@takustaqu/labelbridge/web`（Web Serial） | — | 印字・カット・QR |
-| SR5900P | LAN | 不可（UDP を使うため） | `@takustaqu/labelbridge/node` | 印字・カット・QR |
+| SR5900P | LAN | 通常は不可（UDP を使うため）。Isolated Web App の Direct Sockets なら `printImageSr5900pDirect`（実験的・実機未確認） | `@takustaqu/labelbridge/node` | 印字・カット・ハーフカットでの連続・QR（9mm） |
 
 ## まず試す: 接続方式だけ選ぶ
 
@@ -101,7 +101,7 @@ await printImageSr3500p(device, img, area.tapeMm, { copies: 1 }, (msg) => consol
 | `cut?: CutMode` | `'full'` | `'full'` / `'half'` / `'none'` |
 | `copies?` | `1` | 枚数 |
 | `density?` | `0` | 濃度 -5..5（範囲外は丸める） |
-| `marginDots?` | `0` | ラベル前後の空白（ドット） |
+| `marginDots?` | `0`（SR5900P は本体の空白の幅） | ラベル前後の空白（ドット）。SR5900P は各ラベルの前後に見える余白 |
 
 機種ごとの扱い:
 
@@ -109,19 +109,79 @@ await printImageSr3500p(device, img, area.tapeMm, { copies: 1 }, (msg) => consol
 |---|---|---|---|
 | SR3500P | `'full'` / `'none'`。プリンターがジョブ終了で必ずカットするので、どちらでもバイト列は同じ | エンコーダは使わない。`printSr3500p` が 1 枚ごとに SOFT_RESET → ジョブを繰り返す | 対応 |
 | SR-R2500P | `'full'` / `'none'` | ジョブの中で繰り返す | 対応 |
-| SR5900P | `'full'` / `'half'` / `'none'` | ジョブの中で繰り返す | 未対応（0 より大きいとエラー） |
+| SR5900P | `'full'` / `'half'` / `'none'`。`'half'` はラベルの間をハーフカットし、最後はフルカット | ジョブの中で、ラベルごとのページとして繰り返す（ジョブそのものを繰り返すと印字されない） | 各ラベルの前後に見える余白。既定は本体が入れる空白の幅（約 33 ドット）。それより狭くすると、ジョブの先頭に空白のつまみが付く（下の「LAN のプリンターで使えること」） |
 
 対応するカットは能力表 `MODELS[model].fullCut` / `halfCut` にある（Rust の `full_cut` / `half_cut`）。能力表にないカット（SR3500P・SR-R2500P の `'half'`）を渡すと、エンコーダが `UnsupportedCutError`（Rust の `DriverError::UnsupportedCut`）を投げる。`checkCut(model, cut)` で事前に確かめられる。
+
+## LAN のプリンターで使えること（SR5900P、`@takustaqu/labelbridge/node`）
+
+### 名前で探す・つなぐ
+
+mDNS（`_pdl-datastream._tcp`）で探す。`name` はプリンター自身の名前で、同じ機種が何台あっても見分けられる。IP アドレスは DHCP で変わることがあるので、保存しておくなら名前の方がよい。
+
+```ts
+import { discoverLanPrinters, findLanPrinter, printImageSr5900p } from '@takustaqu/labelbridge/node'
+
+const all = await discoverLanPrinters() // 2.5 秒ほど待って、見つかったものを返す
+const printers = all.filter((d) => d.model === 'SR5900P') // ほかのネットワークプリンターも返るので、機種で絞る
+// → [{ name: 'KING JIM TEPRA PRO SR5900P', host: 'SR5900P….local', port: 9100, addresses: ['192.168.…'], model: 'SR5900P', txt: {…} }]
+
+const p = await findLanPrinter('KING JIM TEPRA PRO SR5900P') // 名前で引き直す（見つからなければ null）
+if (p) await printImageSr5900p(p.addresses[0] ?? p.host, image, 12)
+```
+
+`.local` のホスト名もそのまま渡せる（TCP は IPv4 でつなぐ。IPv6 のリンクローカルに向かうとつながらないため）。
+
+### 複数枚を 1 ジョブで
+
+`printImagesSr5900p(host, images, tapeMm, opts)` は、違うラベルを 1 つのジョブに並べて送る。ジョブの先頭の送りが 1 回で済み、`cut: 'half'` なら台紙でつながったまま出る。`opts.copies` は全体を繰り返す。
+
+```ts
+await printImagesSr5900p(host, [label1, label2, label3], 9, { cut: 'half' })
+```
+
+### 余白とカット位置の校正
+
+本体は、ジョブの先頭と 1 枚目の後ろにだけ、自分で空白（約 33 ドット ≒ 2.3 mm、ヘッドからカッターまで）を入れ、ラベルの間のカットは次のラベルのデータの始まりに入れる。ライブラリはこれに合わせて、2 枚目以降の前後に空白を足し、各ラベルの前後の余白をそろえる（`sr5900pLayout`）。
+
+- `marginDots` で、各ラベルの前後に見える余白を指定できる。本体の空白より狭くすると、ジョブの先頭に空のページを 1 枚入れ、本物のラベルを全部「2 枚目以降」として扱う（先頭に約 5 mm の空白のつまみが付く）。
+- カット位置は機体やテープで少し違うことがある。`calibration`（`Sr5900pCalibration`。既定値は `SR5900P_DEFAULT_CALIBRATION`）で直せる。
+
+```ts
+import { sr5900pCalibrationLabels } from '@takustaqu/labelbridge'
+
+// 校正ラベル（黒い四角 1・2・3 個）を 3 枚つなぎで出し、カットと枠の間の余白を見る
+await printImagesSr5900p(host, sr5900pCalibrationLabels(9), 9, { cut: 'half', calibration: { leadAdjustDots: 10 } })
+```
+
+| `Sr5900pCalibration` | 既定 | 意味 |
+|---|---|---|
+| `headGapDots` | 33 | 本体がジョブの先頭と 1 枚目の後ろに入れる空白 |
+| `leadAdjustDots` | 10 | 2 枚目以降の前に足す空白 = 余白 + この値 |
+| `tailAdjustDots` | -2 | 2 枚目以降（1 枚だけのときはその 1 枚）の後ろに足す空白 = 余白 + この値 |
+| `firstTailAdjustDots` | 7 | 余白が狭い（空のページを入れる）とき、最初のラベルの後ろにさらに足す空白 |
+
+既定値は 9mm テープで合わせたもの（docs/protocol.md §4）。
+
+### 縦向きのラベル
+
+テープを縦に貼るラベルは、縦長の画像（x = テープの幅方向、y = 長さ方向、上がラベルの始まり）で作り、`rotateImage(image, 'ccw')`（`@takustaqu/labelbridge`）で印刷の向きにしてから送る。印刷したテープは、先頭を上にすれば画像のとおりに読める。
+
+### 印刷中の状態の問い合わせ
+
+印刷中は、本体が状態の問い合わせ（UDP）に答えないことがある。`printSr5900p` は、応答の無い時間が 30 秒を超えるまで問い合わせ直す。
 
 ## 下位の API（@takustaqu/labelbridge）
 
 | 用途 | API |
 |---|---|
-| ジョブのバイト列を作る | `encodeSr3500p(image, job)` / `srR2500pParts(image, job)` / `encodeSr5900p(image, job)`（`job` は 3 機種共通の `LabelJob`） |
+| ジョブのバイト列を作る | `encodeSr3500p(image, job)` / `srR2500pParts(image, job)` / `encodeSr5900p(image, job)` / `encodeSr5900pPages(images, job)`（`job` は 3 機種共通の `LabelJob`。SR5900P は `calibration` も渡せる） |
+| SR5900P の並べ方 | `sr5900pLayout(count, cut, marginDots?, calibration?)`（空のページを入れるかと、各ラベルの前後に足す空白） |
+| 画像を回す | `rotateImage(image, 'cw' \| 'ccw')` |
 | ステータスを解釈する | `parseSr3500pStatus` / `parseSrR2500pStatus` / `parseSr5900pStatus` |
 | 印刷手順 | `printSr3500p(ch, job, tapeMm, { copies?, progress?, clock? })` / `printSrR2500p(ch, parts, tapeMm, { progress?, clock? })` / `printSr5900p(ctrl, openData, job, tapeMm, { progress?, clock? })` |
 
-印刷手順の最後の引数は `FlowOptions`（`progress` と、テスト用の `clock`）。SR3500P だけは 1 ジョブ = 1 枚なので、`Sr3500pFlowOptions` に `copies` がある。SR-R2500P / SR5900P の枚数は、エンコード時の `copies` でジョブに入る。
+印刷手順の最後の引数は `FlowOptions`（`progress` と、テスト用の `clock`）。SR3500P だけは 1 ジョブ = 1 枚なので、`Sr3500pFlowOptions` に `copies` がある。SR-R2500P / SR5900P の枚数は、エンコード時の `copies` でジョブに入る（SR5900P は、ラベルごとのページとして）。
 
 `parseSr3500pStatus` は、`ST` と `ER` の両方があるフレームだけを採る（どちらかが欠けたフレームは飛ばす）。
 

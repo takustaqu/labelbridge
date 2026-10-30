@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>labelbridge — LAN printing (Isolated Web App)</title>
+    <link rel="icon" href="/icon.png" />
+    <link rel="stylesheet" href="../web/src/style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-inner">
+        <nav class="topbar">
+          <span class="brand"><span class="brand-mark" aria-hidden="true"></span>labelbridge</span>
+          <span id="support" class="pill">checking…</span>
+        </nav>
+        <h1>Print to a LAN label printer, from a web app.</h1>
+        <p class="lede">This Isolated Web App talks to the printer over UDP/TCP 9100 with Direct Sockets.
+ブラウザの Direct Sockets で、LAN のラベルプリンターへ直接印刷します。</p>
+      </div>
+    </header>
+
+    <main class="layout">
+      <div class="column">
+        <section class="card">
+          <header class="card-head">
+            <span class="step">1</span>
+            <h2>Printer / プリンター</h2>
+          </header>
+          <div class="fields">
+            <label class="field full"><span>IP address or host name / IP アドレスかホスト名</span><input id="host" type="text" placeholder="192.0.2.10" /></label>
+          </div>
+          <div class="buttons" style="margin-top: 12px">
+            <button id="read" type="button" class="btn primary">Read tape / テープを読む</button>
+          </div>
+          <dl class="stats">
+            <div><dt>Status</dt><dd id="status">—</dd></div>
+            <div><dt>Tape</dt><dd id="tape">—</dd></div>
+            <div><dt>Printable dots</dt><dd id="dots">—</dd></div>
+          </dl>
+        </section>
+
+        <section class="card">
+          <header class="card-head">
+            <span class="step">2</span>
+            <h2>Label / ラベル</h2>
+          </header>
+          <div class="fields">
+            <label class="field full"><span>Text</span><input id="text" type="text" value="Hello, LAN!" /></label>
+            <label class="field"><span>Font size (dots)</span><input id="font-px" type="number" value="96" min="8" max="800" /></label>
+            <label class="field"><span>Cut</span>
+              <select id="cut"><option value="full">full</option><option value="half">half</option><option value="none">none</option></select>
+            </label>
+          </div>
+          <button id="print" type="button" class="btn primary big" disabled>Print / 印刷</button>
+        </section>
+      </div>
+
+      <div class="column sticky">
+        <section class="card preview-card">
+          <header class="card-head"><h2>Preview</h2></header>
+          <div class="tape-track"><div class="tape"><canvas id="preview"></canvas></div></div>
+          <p id="size" class="dims">—</p>
+        </section>
+        <section class="card log-card">
+          <header class="card-head"><h2>Log</h2></header>
+          <pre id="log" class="log"></pre>
+        </section>
+      </div>
+    </main>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

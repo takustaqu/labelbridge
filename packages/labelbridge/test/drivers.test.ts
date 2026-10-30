@@ -10,6 +10,9 @@ import {
   printAreas,
   encodeSr3500p,
   encodeSr5900p,
+  sr5900pLayout,
+  sr5900pCalibrationLabels,
+  rotateImage,
   srR2500pParts,
   UnsupportedCutError,
   tprtRequest,
@@ -102,9 +105,42 @@ describe('cut modes follow the capability table', () => {
     expect(encodeSr3500p(img(72), { tapeMm: 12, cut: 'full', copies: 3 })).toEqual(base)
   })
 
-  it('SR5900P rejects a margin', () => {
-    expect(() => encodeSr5900p(img(144), { tapeMm: 12, marginDots: 4 })).toThrow()
-    expect(() => encodeSr5900p(img(144), { tapeMm: 12, marginDots: 0 })).not.toThrow()
+  it('SR5900P lays out margins around the head gap', () => {
+    // 既定（本体の空白 33）: 1 枚目はそのまま、2 枚目以降は前 43・後ろ 31
+    expect(sr5900pLayout(3, 'half')).toEqual({ dummy: false, pads: [[0, 0], [43, 31], [43, 31]] })
+    expect(sr5900pLayout(1, 'full')).toEqual({ dummy: false, pads: [[0, 31]] })
+    // 本体の空白より広い: 1 枚目にも差分を足す
+    expect(sr5900pLayout(2, 'full', 40)).toEqual({ dummy: false, pads: [[7, 7], [50, 38]] })
+    // 狭い: 先頭に空のページを入れて、全部を 2 枚目以降と同じ扱いに
+    expect(sr5900pLayout(2, 'half', 5)).toEqual({ dummy: true, pads: [[15, 10], [15, 3]] })
+    expect(sr5900pLayout(2, 'half', 0, { leadAdjustDots: 0, tailAdjustDots: 0, firstTailAdjustDots: 0 })).toEqual({ dummy: true, pads: [[0, 0], [0, 0]] })
+    // カットなしは、指定の余白をそのまま足す
+    expect(sr5900pLayout(2, 'none', 6)).toEqual({ dummy: false, pads: [[6, 6], [6, 6]] })
+    expect(() => encodeSr5900p(img(144), { tapeMm: 12, marginDots: 4 })).not.toThrow()
+  })
+})
+
+describe('image helpers', () => {
+  it('rotates a vertical label counter-clockwise into print orientation', () => {
+    // 2 × 3（縦長）: 左上と右下が黒
+    const m = { width: 2, height: 3, bits: Uint8Array.from([1, 0, 0, 0, 0, 1]) }
+    const ccw = rotateImage(m, 'ccw')
+    expect([ccw.width, ccw.height]).toEqual([3, 2])
+    // 画像の上（始まり）がテープの先頭（左）に、画像の右がテープの上端に来る
+    expect(Array.from(ccw.bits)).toEqual([0, 0, 1, 1, 0, 0])
+    expect(rotateImage(ccw, 'cw')).toEqual(m)
+  })
+
+  it('makes three SR5900P calibration labels with 1, 2 and 3 blocks', () => {
+    const labels = sr5900pCalibrationLabels(9)
+    expect(labels.map((l) => [l.width, l.height])).toEqual([[200, 104], [200, 104], [200, 104]])
+    const blocks = labels.map((l) => {
+      const row = Math.floor(l.height / 2)
+      let n = 0
+      for (let x = 5; x < l.width - 5; x++) if (l.bits[row * l.width + x] && !l.bits[row * l.width + x - 1]) n++
+      return n
+    })
+    expect(blocks).toEqual([1, 2, 3])
   })
 })
 

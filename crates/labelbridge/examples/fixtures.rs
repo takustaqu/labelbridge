@@ -75,10 +75,36 @@ fn main() {
         "sr3500p-12mm-opts.bin",
         &sr3500p.encode_job(&job_opts(72)).unwrap(),
     );
-    let sr5900p = Sr5900p { density: -1 };
+    let sr5900p = Sr5900p {
+        density: -1,
+        ..Default::default()
+    };
     write(
         "sr5900p-12mm-opts.bin",
         &sr5900p.encode_job(&job_opts(144)).unwrap(),
+    );
+    // 本体の空白より狭い余白（先頭に空のページが入る）・ハーフカット・2 部
+    let sr5900p = Sr5900p {
+        margin_dots: Some(5),
+        ..Default::default()
+    };
+    write(
+        "sr5900p-12mm-margin.bin",
+        &sr5900p
+            .encode_job(&RasterJob {
+                copies: 2,
+                cut: Cut::Half,
+                ..job(144)
+            })
+            .unwrap(),
+    );
+    // 違うラベル 2 枚を 1 ジョブに（ラベルの間はハーフカット）
+    let (a, b) = (pattern(50, 144).transpose(), pattern(30, 144).transpose());
+    write(
+        "sr5900p-12mm-pages.bin",
+        &Sr5900p::default()
+            .encode_pages(&[&a, &b], 12, Cut::Half, 1)
+            .unwrap(),
     );
     let srr2500p = SrR2500p {
         density: 3,

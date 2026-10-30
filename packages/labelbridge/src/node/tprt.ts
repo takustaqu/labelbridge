@@ -67,10 +67,14 @@ export class TprtUdpControl implements TprtControl {
   }
 }
 
-/** TCP 9100 のデータ経路（印刷開始(2) の後にだけ開く）。 */
+/**
+ * TCP 9100 のデータ経路（印刷開始(2) の後にだけ開く）。
+ * IPv4 でつなぐ: mDNS の `.local` 名は IPv6 のリンクローカルが先に返ることがあり、それに向かうと TCP 9100 につながらない
+ * （UDP の制御は udp4 のソケットなので、もともと IPv4 で引く）。
+ */
 export function openTcpData(host: string, port = TPRT_PORT, timeoutMs = 5000): Promise<DataSink> {
   return new Promise((resolve, reject) => {
-    const sock: Socket = connect({ host, port, noDelay: true })
+    const sock: Socket = connect({ host, port, noDelay: true, family: 4 })
     const timer = setTimeout(() => {
       sock.destroy()
       reject(new TimeoutError(`TCP ${host}:${port} に接続できません`))

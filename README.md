@@ -24,7 +24,7 @@ Support is split into two tiers. See [docs/protocol.md](docs/protocol.md) (Japan
 |---|---|---|---|---|---|
 | TEPRA PRO SR3500P | USB | 180 dpi | ✅ libusb | ✅ WebUSB (`@takustaqu/labelbridge/web`) | 12 mm: print, cut, QR |
 | TEPRA PRO SR-R2500P | Bluetooth SPP | 180 dpi | ✅ macOS bridge app / `/dev/…` | ✅ Web Serial (`@takustaqu/labelbridge/web`) | 12 mm: print, cut, QR |
-| TEPRA PRO SR5900P | LAN (UDP/TCP 9100) | 360 dpi | ✅ | ✅ Node (`@takustaqu/labelbridge/node`) | 12 mm: print, cut, QR |
+| TEPRA PRO SR5900P | LAN (UDP/TCP 9100) | 360 dpi | ✅ | ✅ Node (`@takustaqu/labelbridge/node`) | 12 mm: print, cut, QR; 9 mm: several labels in one job joined by half cuts |
 
 Printable dot counts for tape widths other than 12 mm are estimates taken from reference material. `labelbridge area` and `printArea()` tell them apart through `confidence` / `verified`.
 
@@ -40,7 +40,7 @@ TEPRA PRO SR3700P (USB), SR920 (USB), SR-MK1 (Bluetooth), SR-R7900P (LAN). The r
 | `crates/labelbridge-transport` | USB (libusb, feature `usb`), serial (`serial`), Unix sockets, TCP, TPRT (UDP 9100) |
 | `crates/labelbridge-cli` | Sample CLI `labelbridge` (area / status / print-image / testprint) |
 | `tools/bt-bridge` | Bluetooth SPP ↔ Unix socket bridge app for macOS (Swift; re-establishes the link through IOBluetooth) |
-| `packages/labelbridge` | npm package `@takustaqu/labelbridge`: `src/core` (environment-independent job encoding, status parsing, print flows and print areas; byte-for-byte identical to the Rust side), `src/web` (WebUSB, Web Serial), `src/node` (UDP/TCP 9100) |
+| `packages/labelbridge` | npm package `@takustaqu/labelbridge`: `src/core` (environment-independent job encoding, status parsing, print flows and print areas; byte-for-byte identical to the Rust side), `src/web` (WebUSB, Web Serial), `src/node` (UDP/TCP 9100, mDNS discovery) |
 | `examples/web` | Web sample and demo (plain TypeScript + Vite): connect → read the tape → print text or an image dot by dot |
 | `docs/protocol.md` | Protocol notes with sources and confidence (Japanese) |
 | `docs/typescript.md` | TypeScript API and how to print dot by dot (Japanese) |
@@ -95,7 +95,7 @@ tools/bt-bridge/build.sh
 target/release/labelbridge print-image label.png --port <Bluetooth device name>
 ```
 
-Main options: `--model sr3500p|sr-r2500p|sr5900p` (if omitted: `--host` → LAN, `--port` → Bluetooth, otherwise the USB printer found), `--tape MM` (read from the printer if omitted), `--copies N`, `--cut full|half|none`, `--density -5..5`, `--margin DOTS` (added before and after, or only before, depending on the model), `--threshold 0-255`, `--dry-run out.bin` (write the job bytes instead of sending them).
+Main options: `--model sr3500p|sr-r2500p|sr5900p` (if omitted: `--host` → LAN, `--port` → Bluetooth, otherwise the USB printer found), `--tape MM` (read from the printer if omitted), `--copies N`, `--cut full|half|none`, `--density -5..5`, `--margin DOTS` (blank added before and after each label; on LAN printers, the visible margin around each label), `--threshold 0-255`, `--dry-run out.bin` (write the job bytes instead of sending them).
 
 libusb is required (macOS: `brew install libusb`). Build with `--no-default-features` if you need neither USB nor Bluetooth.
 
@@ -158,7 +158,7 @@ cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixture
 - **USB on Windows**: the OS printer driver claims USB printers, so the device has to be switched to WinUSB (not verified).
 - **USB on Linux**: `usblp` has to be detached (not verified).
 - **First Bluetooth connection from a browser**: when the Bluetooth link is not up yet, the first attempt to open the port fails after about 10 seconds while the link comes up; the library retries automatically, so the first connection takes a while. If the link drops (for example, the printer is turned off), the library closes the port and reconnects on the next operation; no browser restart is needed ([docs/protocol.md](docs/protocol.md) §3).
-- **LAN from a browser**: LAN printers use UDP for control, which browsers cannot send. Send from Node instead (the Electron main process or a server).
+- **LAN from a browser**: LAN printers use UDP for control, which browsers cannot send. Send from Node instead (the Electron main process or a server). An Isolated Web App can use the Direct Sockets API (`printImageSr5900pDirect`, `examples/iwa`); this is experimental and not yet verified on hardware.
 
 ## Acknowledgements
 

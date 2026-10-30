@@ -7,6 +7,7 @@ import {
   TPRT,
   frame,
   printSr3500p,
+  encodeSr5900pPages,
   printSr5900p,
   printSrR2500p,
   readStatusSrR2500p,
@@ -158,6 +159,57 @@ describe('SR5900P flow', () => {
       'udp:1', 'udp:2', 'tcp:open', 'udp:257', 'udp:256', 'tcp:10', 'tcp:close', 'udp:1', 'udp:1', 'udp:3',
     ])
     expect(polls).toEqual([])
+  })
+
+  it('puts several labels in one job as pages (one header, 0C between, one @ at the end)', () => {
+    const a = { width: 3, height: 144, bits: new Uint8Array(432) }
+    const b = { width: 5, height: 144, bits: new Uint8Array(720) }
+    const job = encodeSr5900pPages([a, b], { tapeMm: 12, cut: 'half' })
+    const count = (seq: number[]) => {
+      let n = 0
+      for (let i = 0; i + seq.length <= job.length; i++) if (seq.every((v, k) => job[i + k] === v)) n++
+      return n
+    }
+    expect(count([0x1b, 0x7b, 0x03, 0x40, 0x40, 0x7d])).toBe(2) // 先頭と末尾の @ だけ
+    expect(count([0x1b, 0x7b, 0x07, 0x7b, 0x00, 0x00, 0x53, 0x54])).toBe(1) // {ST は 1 回
+    expect(count([0x1b, 0x7b, 0x07, 0x43, 0x01, 0x02, 0x01, 0x01])).toBe(1) // ラベルの間はハーフカット
+    expect(count([0x1b, 0x2e])).toBe(3 + 43 + 5 + 31) // 2 枚目の前後に補正の空白
+    expect(job.filter((v) => v === 0x0c).length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('keeps polling when a few status replies are lost while printing', async () => {
+    const replies: (Uint8Array | null)[] = [status(0), status(1), null, null, status(1), status(0)]
+    const ctrl: TprtControl = {
+      request: async (cmd) => {
+        if (cmd === TPRT.STATUS) {
+          const r = replies.shift()
+          if (r === null) throw new TimeoutError()
+          return r ?? status(0)
+        }
+        if (cmd === TPRT.START) return Uint8Array.of(2, 0, 0)
+        return Uint8Array.of(0x10)
+      },
+    }
+    const sink: DataSink = { write: async () => {}, close: async () => {} }
+    await printSr5900p(ctrl, async () => sink, new Uint8Array(1), 12, { clock: fakeClock() })
+    expect(replies).toEqual([])
+  })
+
+  it('gives up after 30 seconds without a status reply', async () => {
+    let n = 0
+    const ctrl: TprtControl = {
+      request: async (cmd) => {
+        if (cmd === TPRT.STATUS && n++ > 0) throw new TimeoutError()
+        if (cmd === TPRT.STATUS) return status(0)
+        if (cmd === TPRT.START) return Uint8Array.of(2, 0, 0)
+        return Uint8Array.of(0x10)
+      },
+    }
+    const sink: DataSink = { write: async () => {}, close: async () => {} }
+    await expect(printSr5900p(ctrl, async () => sink, new Uint8Array(1), 12, { clock: fakeClock() })).rejects.toThrow(
+      TimeoutError,
+    )
+    expect(n).toBeGreaterThan(55)
   })
 
   it('sends stop even when the printer reports an error mid-print', async () => {

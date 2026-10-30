@@ -18,6 +18,22 @@ export function blankImage(width: number, height: number): MonoImage {
 export const pixel = (m: MonoImage, x: number, y: number): boolean =>
   x >= 0 && y >= 0 && x < m.width && y < m.height && m.bits[y * m.width + x] === 1
 
+/**
+ * 90° 回す。'cw' は時計回り、'ccw' は反時計回り。
+ * 縦向きに作ったラベル（x = テープの幅方向、y = 長さ方向、上がラベルの始まり）は 'ccw' で印刷用の向きになる:
+ * 画像の上がテープの先頭に、画像の右がテープの上端に来る（印刷したテープは、先頭を上にすれば画像のとおりに読める）。
+ */
+export function rotateImage(m: MonoImage, dir: 'cw' | 'ccw'): MonoImage {
+  const out = blankImage(m.height, m.width)
+  for (let y = 0; y < m.height; y++)
+    for (let x = 0; x < m.width; x++) {
+      if (!m.bits[y * m.width + x]) continue
+      const [nx, ny] = dir === 'cw' ? [m.height - 1 - y, x] : [y, m.width - 1 - x]
+      out.bits[ny * out.width + nx] = 1
+    }
+  return out
+}
+
 /** RGBA を輝度で二値化する。透明は白。 */
 export function threshold(rgba: ArrayLike<number>, width: number, height: number, level = 128): MonoImage {
   const bits = new Uint8Array(width * height)

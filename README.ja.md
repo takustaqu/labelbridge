@@ -24,7 +24,7 @@
 |---|---|---|---|---|---|
 | テプラ PRO SR3500P | USB | 180dpi | ✅ libusb | ✅ WebUSB（`@takustaqu/labelbridge/web`） | 12mm: 印字・カット・QR |
 | テプラ PRO SR-R2500P | Bluetooth SPP | 180dpi | ✅ macOS 中継アプリ / `/dev/…` | ✅ Web Serial（`@takustaqu/labelbridge/web`） | 12mm: 印字・カット・QR |
-| テプラ PRO SR5900P | LAN（UDP/TCP 9100） | 360dpi | ✅ | ✅ Node（`@takustaqu/labelbridge/node`） | 12mm: 印字・カット・QR |
+| テプラ PRO SR5900P | LAN（UDP/TCP 9100） | 360dpi | ✅ | ✅ Node（`@takustaqu/labelbridge/node`） | 12mm: 印字・カット・QR、9mm: 複数枚を 1 ジョブで（ハーフカットでつなぐ） |
 
 12mm 以外のテープ幅の印字可能ドット数は、参考資料からの推定値です。`labelbridge area` と `printArea()` の `confidence` / `verified` で区別できます。
 
@@ -40,7 +40,7 @@
 | `crates/labelbridge-transport` | USB（libusb、`usb`）、シリアル（`serial`）、Unix ソケット、TCP、TPRT（UDP 9100） |
 | `crates/labelbridge-cli` | CLI サンプル `labelbridge`（area / status / print-image / testprint） |
 | `tools/bt-bridge` | macOS 用の Bluetooth SPP ↔ Unix ソケット中継アプリ（Swift。IOBluetooth でリンクを張り直す） |
-| `packages/labelbridge` | npm パッケージ `@takustaqu/labelbridge`。`src/core`（環境非依存。ジョブ生成・ステータス解釈・印刷手順・印字範囲。Rust 版とバイト単位で一致）、`src/web`（WebUSB・Web Serial）、`src/node`（UDP/TCP 9100） |
+| `packages/labelbridge` | npm パッケージ `@takustaqu/labelbridge`。`src/core`（環境非依存。ジョブ生成・ステータス解釈・印刷手順・印字範囲。Rust 版とバイト単位で一致）、`src/web`（WebUSB・Web Serial）、`src/node`（UDP/TCP 9100、mDNS でのプリンター探し） |
 | `examples/web` | Web サンプル兼デモ（素の TypeScript + Vite）。接続 → テープ幅を読む → テキストか画像をドットバイドットで印刷 |
 | `docs/protocol.md` | プロトコル資料（出どころと確度つき） |
 | `docs/typescript.md` | TypeScript API とドットバイドット印刷の手順 |
@@ -95,7 +95,7 @@ tools/bt-bridge/build.sh
 target/release/labelbridge print-image label.png --port <Bluetooth の機器名>
 ```
 
-主なオプション: `--model sr3500p|sr-r2500p|sr5900p`（省略時は --host → LAN、--port → Bluetooth、どちらもなければ USB 機器から決める）、`--tape MM`（省略時は実機から読む）、`--copies N`、`--cut full|half|none`、`--density -5..5`、`--margin DOTS`（機種によって前後、または先頭のみに入る）、`--threshold 0-255`、`--dry-run out.bin`（送らずにバイト列を書く）。
+主なオプション: `--model sr3500p|sr-r2500p|sr5900p`（省略時は --host → LAN、--port → Bluetooth、どちらもなければ USB 機器から決める）、`--tape MM`（省略時は実機から読む）、`--copies N`、`--cut full|half|none`、`--density -5..5`、`--margin DOTS`（各ラベルの前後に入る空白。LAN 接続の機種では、各ラベルの前後に見える余白）、`--threshold 0-255`、`--dry-run out.bin`（送らずにバイト列を書く）。
 
 libusb が必要です（macOS: `brew install libusb`）。USB や Bluetooth を使わない場合は `--no-default-features` でビルドできます。
 
@@ -158,7 +158,7 @@ cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixture
 - **Windows での USB 接続**：OS のプリンタードライバーが USB 接続のプリンターを掴むため、WinUSB への差し替えが必要です（未検証）。
 - **Linux での USB 接続**：`usblp` を外す必要があります（未検証）。
 - **ブラウザからの最初の Bluetooth 接続**：Bluetooth のリンクが張られていない状態では、ポートを開く最初の試みがリンク確立待ちで約 10 秒後に失敗します。ライブラリが自動で再試行するので、最初の接続だけ時間がかかります。リンクが切れた場合（プリンターの電源を切ったなど）は、ライブラリがポートを閉じ、次の操作で接続し直します。ブラウザの再起動は要りません（[docs/protocol.md](docs/protocol.md) §3）。
-- **ブラウザからの LAN 接続**：LAN 接続の機種は制御に UDP を使うため、ブラウザからは直接送れません。Node（Electron のメインプロセスやサーバー）から送ってください。
+- **ブラウザからの LAN 接続**：LAN 接続の機種は制御に UDP を使うため、ブラウザからは直接送れません。Node（Electron のメインプロセスやサーバー）から送ってください。Isolated Web App なら Direct Sockets API で送れます（`printImageSr5900pDirect`、`examples/iwa`）。実験的な機能で、実機ではまだ確かめていません。
 
 ## 謝辞
 

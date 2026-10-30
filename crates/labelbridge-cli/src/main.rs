@@ -53,7 +53,7 @@ options:
   --copies N     枚数（既定 1）
   --cut MODE     full | half | none（既定 full。half は sr5900p のみ）
   --density N    濃度 -5..5（既定 0。sr5900p は未対応）
-  --margin DOTS  ラベル前後の余白（ドット。sr3500p / sr-r2500p）
+  --margin DOTS  ラベル前後の余白（ドット。sr5900p は各ラベルの前後に見える余白で、既定は本体の空白の幅）
   --threshold T  二値化のしきい値 0-255（既定 128）
   --length MM    testprint のラベル長（既定 30）
   --dry-run F    送らずにジョブのバイト列を F に書く（--tape が必要）";
@@ -93,6 +93,8 @@ struct Opts {
     cut: Option<Cut>,
     density: i8,
     margin_dots: u32,
+    /// --margin を指定したか（sr5900p は未指定なら本体の空白の幅）
+    margin_set: bool,
     threshold: u8,
     length_mm: f64,
     dry_run: Option<String>,
@@ -129,7 +131,10 @@ impl Opts {
                 "--tape" => o.tape = Some(int(val()?, 1, 100)? as u32),
                 "--copies" => o.copies = int(val()?, 1, 999)? as u16,
                 "--density" => o.density = int(val()?, -5, 5)? as i8,
-                "--margin" => o.margin_dots = int(val()?, 0, 10_000)? as u32,
+                "--margin" => {
+                    o.margin_dots = int(val()?, 0, 10_000)? as u32;
+                    o.margin_set = true;
+                }
                 "--threshold" => o.threshold = int(val()?, 0, 255)? as u8,
                 "--length" => o.length_mm = num(val()?)?,
                 "--dry-run" => o.dry_run = Some(val()?.into()),
@@ -308,10 +313,11 @@ fn print_label(o: &Opts, m: ModelId, label: MonoBitmap, tape_mm: u32) -> Result<
         density: o.density,
         margin_dots: o.margin_dots.min(u16::MAX as u32) as u16,
     };
-    let sr5900p = Sr5900p { density: o.density };
-    if m == ModelId::Sr5900p && o.margin_dots != 0 {
-        eprintln!("warning: --margin is not supported for SR5900P yet; ignored");
-    }
+    let sr5900p = Sr5900p {
+        density: o.density,
+        margin_dots: o.margin_set.then_some(o.margin_dots),
+        ..Default::default()
+    };
     let driver: &dyn PrinterDriver = match m {
         ModelId::Sr3500p => &sr3500p,
         ModelId::SrR2500p => &srr2500p,
