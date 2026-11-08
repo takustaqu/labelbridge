@@ -200,9 +200,17 @@ await printImagesSr5900p(host, sr5900pCalibrationLabels(9), 9, { cut: 'half', ca
 
 ほかの環境（Node の libusb、Electron の IPC 越しなど）も、このインターフェースを実装すれば同じ手順で印刷できる。
 
-## Rust 版との一致
+## Rust 版との関係
 
-`@takustaqu/labelbridge` の 3 つのエンコーダは、Rust の `labelbridge` と同じバイト列を出す。`packages/labelbridge/test/fixtures.test.ts` が、Rust で作った fixture と 1 バイトずつ照合している。Rust 側を変えたら、fixture を作り直す:
+エンコーダ・ステータスの解釈・能力表（`MODELS`）は、Rust の `labelbridge` を WebAssembly にして呼んでいる（`crates/labelbridge-wasm`）。wasm は `src/core/wasm.gen.ts` に埋め込んであり、最初に使ったときに同期的に読み込む。ブラウザ・Node・Electron で同じように動き、読み込みの手間は無い。印刷手順（`flows/`）と接続（`web/`・`node/`）は TypeScript にある。
+
+Rust 側を変えたら、wasm を作り直す:
+
+```bash
+pnpm --filter @takustaqu/labelbridge wasm
+```
+
+`packages/labelbridge/test/fixtures.test.ts` は、Rust で作った fixture とバイト列を照合している。ジョブ生成をわざと変えたときは、fixture も作り直す:
 
 ```bash
 cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixtures

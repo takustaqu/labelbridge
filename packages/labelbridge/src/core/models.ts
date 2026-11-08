@@ -1,5 +1,7 @@
 // 機種ごとの能力。値の根拠と確度は crates/labelbridge/src/models.rs と docs/protocol.md。
 
+import { wasmCall } from './wasm'
+
 export type ModelId = 'SR3500P' | 'SR-R2500P' | 'SR5900P'
 export type Connection = 'usb' | 'bluetooth' | 'lan'
 
@@ -20,36 +22,39 @@ export interface Model {
 
 export const USB_VENDOR_ID = 0x0d8a
 
-export const MODELS: Readonly<Record<ModelId, Model>> = {
-  SR3500P: {
-    id: 'SR3500P',
-    dpi: 180,
-    printableDots: { 4: 22, 6: 36, 9: 54, 12: 72, 18: 108, 24: 128 },
-    verifiedTapes: [12],
-    connections: ['usb'],
-    fullCut: true,
-    halfCut: false,
-    usb: { vendorId: USB_VENDOR_ID, productId: 0x0102 },
-  },
-  'SR-R2500P': {
-    id: 'SR-R2500P',
-    dpi: 180,
-    printableDots: { 4: 22, 6: 36, 9: 54, 12: 72, 18: 108 },
-    verifiedTapes: [12],
-    connections: ['bluetooth'],
-    fullCut: true,
-    halfCut: false,
-  },
-  SR5900P: {
-    id: 'SR5900P',
-    dpi: 360,
-    printableDots: { 4: 40, 6: 72, 9: 104, 12: 144, 18: 216, 24: 288, 36: 368 },
-    verifiedTapes: [12],
-    connections: ['lan'],
-    fullCut: true,
-    halfCut: true,
-  },
+/** このライブラリが扱う機種（並びは一覧の順） */
+export const MODEL_IDS: readonly ModelId[] = ['SR3500P', 'SR-R2500P', 'SR5900P']
+
+interface RustModel {
+  id: ModelId
+  dpi: number
+  tapes: { widthMm: number; printableDots: number; verified: boolean }[]
+  connections: Connection[]
+  fullCut: boolean
+  halfCut: boolean
+  usb: { vendorId: number; productId: number } | null
 }
+
+/** 能力表。本体は Rust（crates/labelbridge/src/models.rs）で、wasm から読む */
+export const MODELS: Readonly<Record<ModelId, Model>> = (() => {
+  const list = wasmCall<RustModel[]>({ op: 'models' }).json
+  const out = {} as Record<ModelId, Model>
+  for (const id of MODEL_IDS) {
+    const m = list.find((x) => x.id === id)
+    if (!m) throw new Error(`能力表に ${id} がありません`)
+    out[id] = {
+      id,
+      dpi: m.dpi,
+      printableDots: Object.fromEntries(m.tapes.map((t) => [t.widthMm, t.printableDots])),
+      verifiedTapes: m.tapes.filter((t) => t.verified).map((t) => t.widthMm),
+      connections: m.connections,
+      fullCut: m.fullCut,
+      halfCut: m.halfCut,
+      ...(m.usb ? { usb: m.usb } : {}),
+    }
+  }
+  return out
+})()
 
 /** カットの指定（Rust の `Cut`）。'none' はどの機種でも受け付ける。 */
 export type CutMode = 'full' | 'half' | 'none'
@@ -162,8 +167,7 @@ export function printAreas(model: ModelId): PrintArea[] {
 
 /** ステータスのテープ幅コード → mm（docs/protocol.md §1。0x5x は別名） */
 export function tapeCodeToMm(code: number): number | null {
-  const c = code >= 0x51 && code <= 0x5b ? code & 0x0f : code
-  return ({ 0x01: 6, 0x02: 9, 0x03: 12, 0x04: 18, 0x05: 24, 0x06: 36, 0x07: 50, 0x0b: 4 } as Record<number, number>)[c] ?? null
+  return wasmCall<number | null>({ op: 'tapeCodeToMm', code: code & 0xff }).json
 }
 
 /** 共通のステータス表現。 */

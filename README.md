@@ -38,9 +38,10 @@ TEPRA PRO SR3700P (USB), SR920 (USB), SR-MK1 (Bluetooth), SR-R7900P (LAN). The r
 |---|---|
 | `crates/labelbridge` | Capability table, job encoding (3 models), status parsing, 1-bit bitmaps |
 | `crates/labelbridge-transport` | USB (libusb, feature `usb`), serial (`serial`), Unix sockets, TCP, TPRT (UDP 9100) |
+| `crates/labelbridge-wasm` | The `labelbridge` crate built as WebAssembly for the TypeScript package (job encoding, status parsing and the capability table have one implementation, in Rust) |
 | `crates/labelbridge-cli` | Sample CLI `labelbridge` (area / status / print-image / testprint) |
 | `tools/bt-bridge` | Bluetooth SPP ↔ Unix socket bridge app for macOS (Swift; re-establishes the link through IOBluetooth) |
-| `packages/labelbridge` | npm package `@takustaqu/labelbridge`: `src/core` (environment-independent job encoding, status parsing, print flows and print areas; byte-for-byte identical to the Rust side), `src/web` (WebUSB, Web Serial), `src/node` (UDP/TCP 9100, mDNS discovery) |
+| `packages/labelbridge` | npm package `@takustaqu/labelbridge`: `src/core` (environment-independent print flows and print areas; job encoding, status parsing and the capability table call the Rust code through the embedded WebAssembly), `src/web` (WebUSB, Web Serial), `src/node` (UDP/TCP 9100, mDNS discovery) |
 | `examples/web` | Web sample and demo (plain TypeScript + Vite): connect → read the tape → print text or an image dot by dot |
 | `docs/protocol.md` | Protocol notes with sources and confidence (Japanese) |
 | `docs/typescript.md` | TypeScript API and how to print dot by dot (Japanese) |
@@ -147,7 +148,13 @@ pnpm test
 pnpm typecheck
 ```
 
-When you change job encoding on the Rust side, regenerate the fixtures that the TypeScript side is checked against:
+When you change the Rust code (`crates/labelbridge`), rebuild the WebAssembly embedded in the TypeScript package (needs the `wasm32-unknown-unknown` target: `rustup target add wasm32-unknown-unknown`):
+
+```bash
+pnpm --filter @takustaqu/labelbridge wasm
+```
+
+If you change job encoding on purpose, also regenerate the fixtures that pin the bytes:
 
 ```bash
 cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixtures

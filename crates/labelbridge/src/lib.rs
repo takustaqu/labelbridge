@@ -7,7 +7,7 @@ pub mod bitmap;
 pub mod cmd;
 mod models;
 pub mod sr3500p;
-mod sr5900p;
+pub mod sr5900p;
 pub mod srr2500p;
 
 use serde::Serialize;
@@ -183,6 +183,26 @@ pub trait PrinterDriver {
     }
 }
 
+/// 受け取ったバイト列から、最初の完全なステータスフレームを探す（TS の `FrameReader` が使う）。
+/// 見つかれば (ステータス, フレームの先頭, フレームの終わり)。壊れたフレームは飛ばして先を探す。
+/// SR5900P は UDP の応答のデータ部（先頭から 20 バイト）を 1 つのフレームとして読む。
+pub fn find_status(id: ModelId, buf: &[u8]) -> Option<(PrinterStatus, usize, usize)> {
+    let (driver, prefix, len): (&dyn PrinterDriver, &[u8], usize) = match id {
+        ModelId::Sr3500p => (&Sr3500p::default(), b"@BDC ST\r\n", sr3500p::STATUS_LEN),
+        ModelId::SrR2500p => (&SrR2500p::default(), b"@BDC ST2", srr2500p::STATUS_LEN),
+        ModelId::Sr5900p => {
+            let s = Sr5900p::default().parse_status(buf).ok()?;
+            return Some((s, 0, 20));
+        }
+    };
+    (0..buf.len().saturating_sub(len - 1))
+        .filter(|&i| buf[i..].starts_with(prefix))
+        .find_map(|i| {
+            let s = driver.parse_status(&buf[i..i + len]).ok()?;
+            Some((s, i, i + len))
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -249,5 +269,20 @@ mod tests {
             Err(DriverError::UnsupportedCut(Cut::Half))
         );
         assert_eq!(d.check_job(&half, None), Ok(()));
+    }
+
+    #[test]
+    fn finds_status_frames_in_a_stream() {
+        let good = b"@BDC ST\r\nST:00;ER:00;TW:03;";
+        let mut frame = good.to_vec();
+        frame.resize(sr3500p::STATUS_LEN, 0xff);
+        // 壊れたフレーム（ER なし）を飛ばして次を読む
+        let mut bad = b"@BDC ST\r\nST:00;".to_vec();
+        bad.resize(sr3500p::STATUS_LEN, 0xff);
+        let buf = [b"xx".as_slice(), &bad, &frame].concat();
+        let (s, start, end) = find_status(ModelId::Sr3500p, &buf).unwrap();
+        assert_eq!((s.tape_width_mm, start, end), (Some(12), 2 + 64, 2 + 128));
+        assert!(find_status(ModelId::Sr3500p, &frame[..63]).is_none());
+        assert!(find_status(ModelId::SrR2500p, &frame).is_none());
     }
 }

@@ -60,7 +60,8 @@
     "build": "tsup && node scripts/add-type-refs.mjs",
     "prepublishOnly": "pnpm run build",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "wasm": "node scripts/build-wasm.mjs"
   },
   "dependencies": {
     "@types/w3c-web-serial": "^1.0.8",

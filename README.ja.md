@@ -38,9 +38,10 @@
 |---|---|
 | `crates/labelbridge` | 機種の能力表、ジョブ生成（3 機種）、ステータス解釈、1bpp ビットマップ |
 | `crates/labelbridge-transport` | USB（libusb、`usb`）、シリアル（`serial`）、Unix ソケット、TCP、TPRT（UDP 9100） |
+| `crates/labelbridge-wasm` | `labelbridge` クレートを TypeScript のパッケージ向けに WebAssembly にしたもの（ジョブ生成・ステータス解釈・能力表の実装は Rust の 1 つだけ） |
 | `crates/labelbridge-cli` | CLI サンプル `labelbridge`（area / status / print-image / testprint） |
 | `tools/bt-bridge` | macOS 用の Bluetooth SPP ↔ Unix ソケット中継アプリ（Swift。IOBluetooth でリンクを張り直す） |
-| `packages/labelbridge` | npm パッケージ `@takustaqu/labelbridge`。`src/core`（環境非依存。ジョブ生成・ステータス解釈・印刷手順・印字範囲。Rust 版とバイト単位で一致）、`src/web`（WebUSB・Web Serial）、`src/node`（UDP/TCP 9100、mDNS でのプリンター探し） |
+| `packages/labelbridge` | npm パッケージ `@takustaqu/labelbridge`。`src/core`（環境非依存。印刷手順・印字範囲。ジョブ生成・ステータス解釈・能力表は、埋め込んだ WebAssembly で Rust のコードを呼ぶ）、`src/web`（WebUSB・Web Serial）、`src/node`（UDP/TCP 9100、mDNS でのプリンター探し） |
 | `examples/web` | Web サンプル兼デモ（素の TypeScript + Vite）。接続 → テープ幅を読む → テキストか画像をドットバイドットで印刷 |
 | `docs/protocol.md` | プロトコル資料（出どころと確度つき） |
 | `docs/typescript.md` | TypeScript API とドットバイドット印刷の手順 |
@@ -147,7 +148,13 @@ pnpm test
 pnpm typecheck
 ```
 
-Rust のジョブ生成を変えたら、TS 側との一致テスト用の fixture を作り直します。
+Rust のコード（`crates/labelbridge`）を変えたら、TypeScript のパッケージに埋め込む WebAssembly を作り直します（`wasm32-unknown-unknown` のターゲットが要ります: `rustup target add wasm32-unknown-unknown`）。
+
+```bash
+pnpm --filter @takustaqu/labelbridge wasm
+```
+
+ジョブ生成をわざと変えたときは、バイト列を固定している fixture も作り直します。
 
 ```bash
 cargo run -p labelbridge --example fixtures -- packages/labelbridge/test/fixtures

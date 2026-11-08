@@ -15,3 +15,12 @@ labelbridge-transport = { path = "crates/labelbridge-transport" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+
+# wasm（packages/labelbridge が埋め込む）: cargo build -p labelbridge-wasm --profile wasm --target wasm32-unknown-unknown
+[profile.wasm]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
