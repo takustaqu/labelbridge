@@ -9,7 +9,8 @@ import {
   printSrR2500p,
   readStatusSr3500p,
   readStatusSrR2500p,
-  srR2500pParts,
+  srR2500pPagesParts,
+  type SrR2500pJob,
   type JobOptions,
   type ModelId,
   type MonoImage,
@@ -21,6 +22,9 @@ import { WebSerialChannel, requestSppPort } from './webserial'
 import { WebUsbPrinterChannel, requestUsbPrinter } from './webusb'
 
 export type { CutMode, JobOptions } from '../core'
+
+/** SR-R2500P の印刷の設定（テープ幅以外のジョブの設定） */
+export type SrR2500pOptions = Omit<SrR2500pJob, 'tapeMm'>
 
 async function withChannel<C extends { open(): Promise<void>; close(): Promise<void> }, T>(ch: C, fn: (ch: C) => Promise<T>) {
   await ch.open()
@@ -57,15 +61,29 @@ export async function printImageSr3500p(
   await withChannel(new WebUsbPrinterChannel(device), (ch) => printSr3500p(ch, job, tapeMm, { copies: opts.copies, progress }))
 }
 
-/** SR-R2500P に 1 画素 = 1 ドットで印刷する。`opts.cut` は 'full' / 'none'。 */
+/**
+ * SR-R2500P に 1 画素 = 1 ドットで印刷する。`opts.cut` は 'full' / 'none'。
+ * `opts.leadingCut: 'none'` で、ジョブの先頭の空白を切り落とさずラベルにつけたまま出す。
+ */
 export async function printImageSrR2500p(
   port: SerialPort,
   image: MonoImage,
   tapeMm: number,
-  opts: JobOptions = {},
+  opts: SrR2500pOptions = {},
   progress?: Progress,
 ): Promise<void> {
-  const parts = srR2500pParts(image, { ...opts, tapeMm })
+  await printImagesSrR2500p(port, [image], tapeMm, opts, progress)
+}
+
+/** SR-R2500P に、違うラベル何枚かを 1 回のジョブで印刷する（先頭の空白の扱いが最初の 1 回で済む）。部数は 1 枚ごとに繰り返す。 */
+export async function printImagesSrR2500p(
+  port: SerialPort,
+  images: MonoImage[],
+  tapeMm: number,
+  opts: SrR2500pOptions = {},
+  progress?: Progress,
+): Promise<void> {
+  const parts = srR2500pPagesParts(images, { ...opts, tapeMm })
   await withChannel(new WebSerialChannel(port), (ch) => printSrR2500p(ch, parts, tapeMm, { progress }))
 }
 

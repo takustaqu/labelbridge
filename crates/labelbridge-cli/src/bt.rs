@@ -309,16 +309,21 @@ fn run(s: &mut Session, p: &JobParts, tape_mm: u32) -> Result<(), BtError> {
     s.send("status auto", &STATUS_AUTO)?;
     s.check(Duration::from_secs(15))?;
 
-    for copy in 0..p.copies {
-        s.send("page environment", &p.page_environment)?;
-        for (i, band) in p.bands.iter().enumerate() {
+    for (copy, page) in p
+        .pages
+        .iter()
+        .flat_map(|page| std::iter::repeat_n(page, p.copies as usize))
+        .enumerate()
+    {
+        s.send("page environment", &page.page_environment)?;
+        for (i, band) in page.bands.iter().enumerate() {
             s.send("raster", band)?;
             eprintln!(
-                "sent band {}/{} (copy {}/{})",
+                "sent band {}/{} (label {}/{})",
                 i + 1,
-                p.bands.len(),
+                page.bands.len(),
                 copy + 1,
-                p.copies
+                p.pages.len() * p.copies as usize
             );
             match s.check(Duration::from_secs(60)) {
                 Ok(_) => {}

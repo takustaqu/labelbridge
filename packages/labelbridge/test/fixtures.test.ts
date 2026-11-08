@@ -3,7 +3,7 @@
 
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { concat, encodeSr3500p, encodeSr5900p, encodeSr5900pPages, flattenSrR2500pPages, srR2500pParts, toHex, type MonoImage } from '../src/core'
+import { concat, encodeSr3500p, encodeSr5900p, encodeSr5900pPages, flattenSrR2500pPages, srR2500pPagesParts, srR2500pParts, toHex, type MonoImage } from '../src/core'
 
 /** crates/labelbridge/examples/fixtures.rs の pattern() と同じ式。 */
 function pattern(width: number, height: number): MonoImage {
@@ -37,7 +37,7 @@ describe('TS encoders match the Rust drivers byte for byte', () => {
 
   it('SR-R2500P', () => {
     const p = srR2500pParts(pattern(50, 72), { tapeMm: 12 })
-    expectSame(concat([p.environment, p.pageEnvironment, ...p.bands, p.end]), fixture('srr2500p-12mm.bin'))
+    expectSame(concat([p.environment, p.pages[0]!.pageEnvironment, ...p.pages[0]!.bands, p.end]), fixture('srr2500p-12mm.bin'))
   })
 
   it('with options (density, margin, copies, no cut)', () => {
@@ -57,6 +57,12 @@ describe('TS encoders match the Rust drivers byte for byte', () => {
     expectSame(encodeSr5900p(pattern(50, 144), { tapeMm: 12, leadingCut: 'half' }), fixture('sr5900p-12mm-leadhalf.bin'))
     const p = srR2500pParts(pattern(50, 72), { tapeMm: 12, cut: 'none', copies: 2, density: 3, marginDots: 5 })
     expectSame(flattenSrR2500pPages(p), fixture('srr2500p-12mm-opts.bin'))
+  })
+
+  it('SR-R2500P: several labels in one job, leading blank kept', () => {
+    const p = srR2500pPagesParts([pattern(50, 72), pattern(30, 72)], { tapeMm: 12, leadingCut: 'none' })
+    const pages = p.pages.flatMap((page) => [page.pageEnvironment, ...page.bands, Uint8Array.of(0x0c)])
+    expectSame(concat([p.environment, ...pages, p.end]), fixture('srr2500p-12mm-pages.bin'))
   })
 
   it('pattern sanity', () => {

@@ -130,6 +130,8 @@ pub enum DriverError {
     BadStatus(usize),
     #[error("not implemented for {0:?} yet")]
     NotImplemented(ModelId),
+    #[error("no labels to print")]
+    NoLabels,
 }
 
 pub trait PrinterDriver {

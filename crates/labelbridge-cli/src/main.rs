@@ -52,7 +52,8 @@ options:
   --tape MM      テープ幅。省略時は実機から読む
   --copies N     枚数（既定 1）
   --cut MODE     full | half | none（既定 full。half は sr5900p のみ）
-  --leading-cut MODE  full | half（sr5900p。既定 full。half は先頭の空白を切り落とさず、ハーフカットでつなげておく）
+  --leading-cut MODE  ジョブ先頭の空白: full（既定。切り落とす）| half（sr5900p。ハーフカットでつなげておく）
+                      | none（sr-r2500p。切り落とさず、ラベルにつけたまま）
   --density N    濃度 -5..5（既定 0。sr5900p は未対応）
   --margin DOTS  ラベル前後の余白（ドット。sr5900p は各ラベルの前後に見える余白で、既定は本体の空白の幅）
   --threshold T  二値化のしきい値 0-255（既定 128）
@@ -94,6 +95,7 @@ struct Opts {
     cut: Option<Cut>,
     /// sr5900p: ジョブの先頭のカットをハーフカットにする
     leading_half_cut: bool,
+    keep_leading_blank: bool,
     density: i8,
     margin_dots: u32,
     /// --margin を指定したか（sr5900p は未指定なら本体の空白の幅）
@@ -150,9 +152,10 @@ impl Opts {
                     })
                 }
                 "--leading-cut" => {
-                    o.leading_half_cut = match val()? {
-                        "full" => false,
-                        "half" => true,
+                    (o.leading_half_cut, o.keep_leading_blank) = match val()? {
+                        "full" => (false, false),
+                        "half" => (true, false),
+                        "none" => (false, true),
                         v => return Err(format!("--leading-cut: {v}")),
                     }
                 }
@@ -322,6 +325,7 @@ fn print_label(o: &Opts, m: ModelId, label: MonoBitmap, tape_mm: u32) -> Result<
     let srr2500p = SrR2500p {
         density: o.density,
         margin_dots: o.margin_dots.min(u16::MAX as u32) as u16,
+        keep_leading_blank: o.keep_leading_blank,
     };
     let sr5900p = Sr5900p {
         density: o.density,
@@ -574,6 +578,8 @@ mod tests {
         ])
         .unwrap();
         assert!(o.leading_half_cut);
+        let keep = Opts::parse(&["a.png", "--leading-cut", "none"]).unwrap();
+        assert!(keep.keep_leading_blank && !keep.leading_half_cut);
         assert_eq!(o.file.as_deref(), Some("a.png"));
         assert_eq!(o.model, Some(ModelId::SrR2500p));
         assert_eq!(o.tape, Some(12));

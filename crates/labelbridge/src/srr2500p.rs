@@ -4,7 +4,7 @@
 //! ESC { I 05 00 }           ステータス自動通知 ON → ステータスを待つ
 //! @ / {ST / C / D / G       ジョブ環境
 //! ESC { I 05 00 }           → ステータスを待つ
-//! ページごと:
+//! ページ（ラベル 1 枚）ごと。何枚でも 1 ジョブに続けられる:
 //!   L <行数> / T <余白>
 //!   (ESC . 00 00 00 01 nL nH <data>) × 行数（1024 行ごとにステータス確認）
 //!   FF
@@ -35,32 +35,50 @@ pub struct SrR2500p {
     pub density: i8,
     /// ページ先頭の余白（ドット、`T`）。
     pub margin_dots: u16,
+    /// ジョブの先頭の空白（印字ヘッドからカッターまで）を切り落とさず、最初のラベルにつけたまま出す
+    /// （`C` の 1 バイト目を 0 にする）。既定は切り落とす（短い切れ端が 1 枚出る）。
+    /// この機種にハーフカットは無く、1 バイト目の 2 はフルカットと同じになる（実機確認）。
+    pub keep_leading_blank: bool,
+}
+
+/// ラベル 1 枚ぶん: ページ環境 → bands → FF
+#[derive(Debug, Clone)]
+pub struct PageParts {
+    pub page_environment: Vec<u8>,
+    pub bands: Vec<Vec<u8>>,
 }
 
 /// 対話的に送るためのジョブの部品。
 #[derive(Debug, Clone)]
 pub struct JobParts {
     pub environment: Vec<u8>,
-    /// 部数ぶん繰り返す: ページ環境 → bands → FF
-    pub page_environment: Vec<u8>,
-    pub bands: Vec<Vec<u8>>,
+    /// ページを順に送る。各ページは部数ぶん続けて繰り返す
+    pub pages: Vec<PageParts>,
     pub copies: u16,
     pub end: Vec<u8>,
 }
 
 impl SrR2500p {
     pub fn job_parts(&self, job: &RasterJob) -> Result<JobParts, DriverError> {
-        self.check_job(job, None)?;
+        self.job_parts_pages(std::slice::from_ref(job))
+    }
+
+    /// 何枚かのラベルを 1 回のジョブにする（先頭の空白の扱いがジョブの最初の 1 回で済む）。
+    /// テープ幅・カット・部数は最初のジョブのものを使う。
+    pub fn job_parts_pages(&self, jobs: &[RasterJob]) -> Result<JobParts, DriverError> {
+        let first = jobs.first().ok_or(DriverError::NoLabels)?;
+        for job in jobs {
+            self.check_job(job, None)?;
+        }
         let tape = self
             .capabilities()
-            .tape(job.tape_width_mm)
+            .tape(first.tape_width_mm)
             .expect("checked");
         let dots = tape.printable_dots as u16;
-        let width = job.bitmap.width();
 
-        // C: カット値（ハーフカットなし機種。Half は check_job で拒む）
-        let cut: [u8; 4] = match job.cut {
-            Cut::Full | Cut::Half => [0x01, 0x01, 0x01, 0x01],
+        // C: カット値 [ジョブの先頭, ラベルの間, ジョブの最後, ?]（ハーフカットなし機種。Half は check_job で拒む）
+        let cut: [u8; 4] = match first.cut {
+            Cut::Full | Cut::Half => [u8::from(!self.keep_leading_blank), 0x01, 0x01, 0x01],
             Cut::None => [0x00, 0x00, 0x00, 0x00],
         };
         let mut environment = cmd::job_boundary();
@@ -69,6 +87,17 @@ impl SrR2500p {
         environment.extend(cmd::density(self.density));
         environment.extend(cmd::g());
 
+        let pages = jobs.iter().map(|job| self.page_parts(job, dots)).collect();
+        Ok(JobParts {
+            environment,
+            pages,
+            copies: first.copies.max(1),
+            end: cmd::job_boundary(),
+        })
+    }
+
+    fn page_parts(&self, job: &RasterJob, dots: u16) -> PageParts {
+        let width = job.bitmap.width();
         let lines = job.bitmap.height();
         let mut page_environment = cmd::length(lines);
         page_environment.extend(cmd::leading(self.margin_dots));
@@ -95,14 +124,10 @@ impl SrR2500p {
         if !band.is_empty() {
             bands.push(band);
         }
-
-        Ok(JobParts {
-            environment,
+        PageParts {
             page_environment,
             bands,
-            copies: job.copies.max(1),
-            end: cmd::job_boundary(),
-        })
+        }
     }
 }
 
@@ -142,10 +167,12 @@ impl PrinterDriver for SrR2500p {
         let mut out = STATUS_AUTO.to_vec();
         out.extend(&p.environment);
         out.extend(STATUS_AUTO);
-        for _ in 0..p.copies {
-            out.extend(&p.page_environment);
-            p.bands.iter().for_each(|b| out.extend(b));
-            out.push(cmd::FORM_FEED);
+        for page in &p.pages {
+            for _ in 0..p.copies {
+                out.extend(&page.page_environment);
+                page.bands.iter().for_each(|b| out.extend(b));
+                out.push(cmd::FORM_FEED);
+            }
         }
         out.extend(&p.end);
         out.extend(STATUS_ONCE);
@@ -187,18 +214,19 @@ mod tests {
             cut: Cut::Full,
         };
         let p = SrR2500p::default().job_parts(&job).unwrap();
-        assert_eq!(p.bands.len(), 1);
+        let page = &p.pages[0];
+        assert_eq!(page.bands.len(), 1);
         let line = 8 + 9;
-        assert_eq!(p.bands[0].len(), 2 * line);
+        assert_eq!(page.bands[0].len(), 2 * line);
         assert_eq!(
-            p.bands[0][..8],
+            page.bands[0][..8],
             [0x1b, 0x2e, 0x00, 0x00, 0x00, 0x01, 72, 0x00]
         );
-        assert_eq!(p.bands[0][8 + 8], 0x01); // dot 71 = 上端
-        assert!(p.bands[0][line + 8..].iter().all(|&b| b == 0));
+        assert_eq!(page.bands[0][8 + 8], 0x01); // dot 71 = 上端
+        assert!(page.bands[0][line + 8..].iter().all(|&b| b == 0));
         assert_eq!(p.environment[..6], cmd::job_boundary()[..]);
         assert_eq!(
-            p.page_environment,
+            page.page_environment,
             [cmd::length(2), cmd::leading(0)].concat()
         );
     }
@@ -215,6 +243,47 @@ mod tests {
             cut: Cut::Full,
         };
         let p = SrR2500p::default().job_parts(&job).unwrap();
-        assert_eq!(p.bands[0][8 + 8], 0x01);
+        assert_eq!(p.pages[0].bands[0][8 + 8], 0x01);
+    }
+
+    fn label(lines: u32) -> RasterJob {
+        RasterJob {
+            tape_width_mm: 12,
+            bitmap: MonoBitmap::new(72, lines),
+            copies: 1,
+            cut: Cut::Full,
+        }
+    }
+
+    #[test]
+    fn leading_blank_is_cut_off_unless_kept() {
+        let cut = |d: &SrR2500p| {
+            let env = d.job_parts(&label(4)).unwrap().environment;
+            let at = env
+                .windows(4)
+                .position(|w| w == [0x1b, 0x7b, 0x07, b'C'])
+                .unwrap();
+            env[at + 4..at + 8].to_vec()
+        };
+        assert_eq!(cut(&SrR2500p::default()), [1, 1, 1, 1]);
+        let keep = SrR2500p {
+            keep_leading_blank: true,
+            ..Default::default()
+        };
+        assert_eq!(cut(&keep), [0, 1, 1, 1]);
+    }
+
+    #[test]
+    fn several_labels_go_in_one_job() {
+        let p = SrR2500p::default()
+            .job_parts_pages(&[label(4), label(9)])
+            .unwrap();
+        assert_eq!(p.pages.len(), 2);
+        assert_eq!(
+            p.pages[1].page_environment,
+            [cmd::length(9), cmd::leading(0)].concat()
+        );
+        let bytes = SrR2500p::default().encode_job(&label(4)).unwrap();
+        assert_eq!(bytes.iter().filter(|&&b| b == cmd::FORM_FEED).count(), 1);
     }
 }

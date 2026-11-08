@@ -39,9 +39,25 @@ fn job_opts(dots: u32) -> RasterJob {
 
 fn flatten(p: &labelbridge::srr2500p::JobParts) -> Vec<u8> {
     let mut r = p.environment.clone();
-    for _ in 0..p.copies {
-        r.extend(&p.page_environment);
-        p.bands.iter().for_each(|b| r.extend(b));
+    for page in &p.pages {
+        for _ in 0..p.copies {
+            r.extend(&page.page_environment);
+            page.bands.iter().for_each(|b| r.extend(b));
+        }
+    }
+    r.extend(&p.end);
+    r
+}
+
+/// ページごとに FF で区切る（印刷の手順と同じ。flatten はページの区切りを含まない）
+fn flatten_pages(p: &labelbridge::srr2500p::JobParts) -> Vec<u8> {
+    let mut r = p.environment.clone();
+    for page in &p.pages {
+        for _ in 0..p.copies {
+            r.extend(&page.page_environment);
+            page.bands.iter().for_each(|b| r.extend(b));
+            r.push(0x0c);
+        }
     }
     r.extend(&p.end);
     r
@@ -118,7 +134,22 @@ fn main() {
     let srr2500p = SrR2500p {
         density: 3,
         margin_dots: 5,
+        ..Default::default()
     };
     let p = srr2500p.job_parts(&job_opts(72)).unwrap();
     write("srr2500p-12mm-opts.bin", &flatten(&p));
+    // 先頭の空白を切り落とさず、違うラベル 2 枚を 1 ジョブに（ページの間は FF で区切る）
+    let keep = SrR2500p {
+        keep_leading_blank: true,
+        ..Default::default()
+    };
+    let two = [
+        job(72),
+        RasterJob {
+            bitmap: pattern(30, 72).transpose(),
+            ..job(72)
+        },
+    ];
+    let p = keep.job_parts_pages(&two).unwrap();
+    write("srr2500p-12mm-pages.bin", &flatten_pages(&p));
 }

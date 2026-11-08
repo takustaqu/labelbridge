@@ -89,7 +89,7 @@ await printImageSr3500p(device, img, area.tapeMm, { copies: 1 }, (msg) => consol
 | 機種 | 印刷する関数 | パッケージ |
 |---|---|---|
 | SR3500P | `printImageSr3500p(device, image, tapeMm, opts, progress)` | `@takustaqu/labelbridge/web` |
-| SR-R2500P | `printImageSrR2500p(port, image, tapeMm, opts, progress)` | `@takustaqu/labelbridge/web` |
+| SR-R2500P | `printImageSrR2500p(port, image, tapeMm, opts, progress)`（違うラベルを 1 ジョブで: `printImagesSrR2500p(port, images, …)`） | `@takustaqu/labelbridge/web` |
 | SR5900P | `printImageSr5900p(host, image, tapeMm, opts, progress)` | `@takustaqu/labelbridge/node` |
 
 ### ジョブの指定（`JobOptions`）
@@ -108,8 +108,10 @@ await printImageSr3500p(device, img, area.tapeMm, { copies: 1 }, (msg) => consol
 | 機種 | `cut` | `copies` | `marginDots` |
 |---|---|---|---|
 | SR3500P | `'full'` / `'none'`。プリンターがジョブ終了で必ずカットするので、どちらでもバイト列は同じ | エンコーダは使わない。`printSr3500p` が 1 枚ごとに SOFT_RESET → ジョブを繰り返す | 対応 |
-| SR-R2500P | `'full'` / `'none'` | ジョブの中で繰り返す | 対応 |
+| SR-R2500P | `'full'` / `'none'` | ジョブの中で繰り返す（`printImagesSrR2500p` では 1 枚ごと） | 対応 |
 | SR5900P | `'full'` / `'half'` / `'none'`。`'half'` はラベルの間をハーフカットし、最後はフルカット | ジョブの中で、ラベルごとのページとして繰り返す（ジョブそのものを繰り返すと印字されない） | 各ラベルの前後に見える余白。既定は本体が入れる空白の幅（約 33 ドット）。それより狭くすると、ジョブの先頭に空白のつまみが付く（下の「LAN のプリンターで使えること」） |
+
+SR-R2500P は、`opts.leadingCut: 'none'`（Rust の `SrR2500p::keep_leading_blank`、CLI の `--leading-cut none`）で、ジョブの先頭の空白（ヘッドからカッターまで）を切り落とさず、最初のラベルにつけたまま出せる。既定の `'full'` は切り落とし、短い切れ端が 1 枚出る。何枚か出すときは、1 ジョブにまとめると切れ端は最初の 1 回で済む（[protocol.md](protocol.md) §3）。
 
 対応するカットは能力表 `MODELS[model].fullCut` / `halfCut` にある（Rust の `full_cut` / `half_cut`）。能力表にないカット（SR3500P・SR-R2500P の `'half'`）を渡すと、エンコーダが `UnsupportedCutError`（Rust の `DriverError::UnsupportedCut`）を投げる。`checkCut(model, cut)` で事前に確かめられる。
 
@@ -177,7 +179,7 @@ await printImagesSr5900p(host, sr5900pCalibrationLabels(9), 9, { cut: 'half', ca
 
 | 用途 | API |
 |---|---|
-| ジョブのバイト列を作る | `encodeSr3500p(image, job)` / `srR2500pParts(image, job)` / `encodeSr5900p(image, job)` / `encodeSr5900pPages(images, job)`（`job` は 3 機種共通の `LabelJob`。SR5900P は `calibration` も渡せる） |
+| ジョブのバイト列を作る | `encodeSr3500p(image, job)` / `srR2500pParts(image, job)` / `srR2500pPagesParts(images, job)` / `encodeSr5900p(image, job)` / `encodeSr5900pPages(images, job)`（`job` は 3 機種共通の `LabelJob`。SR5900P は `calibration` も渡せる） |
 | SR5900P の並べ方 | `sr5900pLayout(count, cut, marginDots?, calibration?)`（空のページを入れるかと、各ラベルの前後に足す空白） |
 | 画像を回す | `rotateImage(image, 'cw' \| 'ccw')` |
 | ステータスを解釈する | `parseSr3500pStatus` / `parseSrR2500pStatus` / `parseSr5900pStatus` |

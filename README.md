@@ -95,7 +95,7 @@ tools/bt-bridge/build.sh
 target/release/labelbridge print-image label.png --port <Bluetooth device name>
 ```
 
-Main options: `--model sr3500p|sr-r2500p|sr5900p` (if omitted: `--host` → LAN, `--port` → Bluetooth, otherwise the USB printer found), `--tape MM` (read from the printer if omitted), `--copies N`, `--cut full|half|none`, `--density -5..5`, `--margin DOTS` (blank added before and after each label; on LAN printers, the visible margin around each label), `--threshold 0-255`, `--dry-run out.bin` (write the job bytes instead of sending them).
+Main options: `--model sr3500p|sr-r2500p|sr5900p` (if omitted: `--host` → LAN, `--port` → Bluetooth, otherwise the USB printer found), `--tape MM` (read from the printer if omitted), `--copies N`, `--cut full|half|none`, `--density -5..5`, `--margin DOTS` (blank added before and after each label; on LAN printers, the visible margin around each label), `--leading-cut full|half|none` (the blank at the start of a job: cut it off / keep it attached with a half cut / leave it on the label), `--threshold 0-255`, `--dry-run out.bin` (write the job bytes instead of sending them).
 
 libusb is required (macOS: `brew install libusb`). Build with `--no-default-features` if you need neither USB nor Bluetooth.
 

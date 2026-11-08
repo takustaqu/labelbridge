@@ -173,11 +173,12 @@ export async function printSrR2500p(
     await ch.write(parts.environment)
     await ch.write(SRR2500P_STATUS_AUTO)
     await wait(15000)
-    for (let c = 0; c < parts.copies; c++) {
-      await ch.write(parts.pageEnvironment)
-      for (const [i, band] of parts.bands.entries()) {
+    const labels = parts.pages.flatMap((page) => Array.from({ length: parts.copies }, () => page))
+    for (const [c, page] of labels.entries()) {
+      await ch.write(page.pageEnvironment)
+      for (const [i, band] of page.bands.entries()) {
         await ch.write(band)
-        progress(`データ送信 ${i + 1}/${parts.bands.length}（${c + 1}/${parts.copies} 枚目）`)
+        progress(`データ送信 ${i + 1}/${page.bands.length}（${c + 1}/${labels.length} 枚目）`)
         try {
           await wait(60000)
         } catch (e) {
@@ -208,13 +209,13 @@ export async function printSrR2500p(
 
 /** SR-R2500P のジョブ部品を、ステータス待ちを含めずに連結する（確認用）。 */
 export function flattenSrR2500p(parts: SrR2500pParts): Uint8Array {
-  const pages = Array.from({ length: parts.copies }, () => [parts.pageEnvironment, ...parts.bands, Uint8Array.of(0x0c)]).flat()
+  const pages = parts.pages.flatMap((p) => Array.from({ length: parts.copies }, () => [p.pageEnvironment, ...p.bands, Uint8Array.of(0x0c)]).flat())
   return concat([SRR2500P_STATUS_AUTO, parts.environment, SRR2500P_STATUS_AUTO, ...pages, parts.end, SRR2500P_STATUS_ONCE])
 }
 
 /** ジョブ環境 + 部数ぶんのページ（FF なし） + 終了。Rust 側 fixture との照合用。 */
 export function flattenSrR2500pPages(parts: SrR2500pParts): Uint8Array {
-  const pages = Array.from({ length: parts.copies }, () => [parts.pageEnvironment, ...parts.bands]).flat()
+  const pages = parts.pages.flatMap((p) => Array.from({ length: parts.copies }, () => [p.pageEnvironment, ...p.bands]).flat())
   return concat([parts.environment, ...pages, parts.end])
 }
 

@@ -95,7 +95,7 @@ tools/bt-bridge/build.sh
 target/release/labelbridge print-image label.png --port <Bluetooth の機器名>
 ```
 
-主なオプション: `--model sr3500p|sr-r2500p|sr5900p`（省略時は --host → LAN、--port → Bluetooth、どちらもなければ USB 機器から決める）、`--tape MM`（省略時は実機から読む）、`--copies N`、`--cut full|half|none`、`--density -5..5`、`--margin DOTS`（各ラベルの前後に入る空白。LAN 接続の機種では、各ラベルの前後に見える余白）、`--threshold 0-255`、`--dry-run out.bin`（送らずにバイト列を書く）。
+主なオプション: `--model sr3500p|sr-r2500p|sr5900p`（省略時は --host → LAN、--port → Bluetooth、どちらもなければ USB 機器から決める）、`--tape MM`（省略時は実機から読む）、`--copies N`、`--cut full|half|none`、`--density -5..5`、`--margin DOTS`（各ラベルの前後に入る空白。LAN 接続の機種では、各ラベルの前後に見える余白）、`--leading-cut full|half|none`（ジョブ先頭の空白: 切り落とす / ハーフカットでつなげる / つけたまま）、`--threshold 0-255`、`--dry-run out.bin`（送らずにバイト列を書く）。
 
 libusb が必要です（macOS: `brew install libusb`）。USB や Bluetooth を使わない場合は `--no-default-features` でビルドできます。
 

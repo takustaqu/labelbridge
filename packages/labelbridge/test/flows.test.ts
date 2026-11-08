@@ -56,7 +56,7 @@ describe('SR-R2500P flow', () => {
     let printed = false
     const ch = new FakeChannel((b, self) => {
       if (eq(b, frame(0x49, [5, 0]))) self.queue.push(r2500Status(0))
-      if (eq(b, parts.bands[0]!)) self.queue.push(r2500Status(2))
+      if (eq(b, parts.pages[0]!.bands[0]!)) self.queue.push(r2500Status(2))
       if (eq(b, parts.end)) {
         printed = true
         self.queue.push(r2500Status(5), r2500Status(0))
