@@ -33,7 +33,8 @@ impl Reply {
 
     fn encode(&self) -> Vec<u8> {
         let j = serde_json::to_vec(&self.json).unwrap_or_default();
-        let mut out = Vec::with_capacity(8 + j.len() + self.blobs.iter().map(|b| b.len() + 4).sum::<usize>());
+        let mut out =
+            Vec::with_capacity(8 + j.len() + self.blobs.iter().map(|b| b.len() + 4).sum::<usize>());
         out.extend((j.len() as u32).to_le_bytes());
         out.extend(j);
         out.extend((self.blobs.len() as u32).to_le_bytes());
@@ -49,12 +50,25 @@ impl Reply {
 #[serde(tag = "op", rename_all = "camelCase")]
 enum Req {
     Models,
-    TapeCodeToMm { code: u8 },
+    TapeCodeToMm {
+        code: u8,
+    },
     #[serde(rename_all = "camelCase")]
-    Encode { model: String, job: Job, images: Vec<Size> },
+    Encode {
+        model: String,
+        job: Job,
+        images: Vec<Size>,
+    },
     #[serde(rename_all = "camelCase")]
-    Layout { count: usize, cut: String, margin_dots: Option<u32>, calibration: Option<Cal> },
-    FindStatus { model: String },
+    Layout {
+        count: usize,
+        cut: String,
+        margin_dots: Option<u32>,
+        calibration: Option<Cal>,
+    },
+    FindStatus {
+        model: String,
+    },
 }
 
 #[derive(Deserialize)]
@@ -92,7 +106,9 @@ impl Cal {
             head_gap_dots: self.head_gap_dots.unwrap_or(d.head_gap_dots),
             lead_adjust_dots: self.lead_adjust_dots.unwrap_or(d.lead_adjust_dots),
             tail_adjust_dots: self.tail_adjust_dots.unwrap_or(d.tail_adjust_dots),
-            first_tail_adjust_dots: self.first_tail_adjust_dots.unwrap_or(d.first_tail_adjust_dots),
+            first_tail_adjust_dots: self
+                .first_tail_adjust_dots
+                .unwrap_or(d.first_tail_adjust_dots),
         }
     }
 }
@@ -109,7 +125,9 @@ fn fail(kind: &str, extra: Value) -> Value {
 fn driver_error(e: DriverError) -> Value {
     match e {
         DriverError::UnsupportedTape(mm) => fail("unsupportedTape", json!({ "tapeMm": mm })),
-        DriverError::BitmapTooWide { got, max } => fail("tooWide", json!({ "got": got, "max": max })),
+        DriverError::BitmapTooWide { got, max } => {
+            fail("tooWide", json!({ "got": got, "max": max }))
+        }
         DriverError::UnsupportedCut(c) => fail("unsupportedCut", json!({ "cut": cut_name(c) })),
         DriverError::TooLong(lines, max) => fail("tooLong", json!({ "lines": lines, "max": max })),
         DriverError::NoLabels => fail("noLabels", json!({})),
@@ -130,7 +148,10 @@ fn parse_cut(s: Option<&str>) -> Result<Cut, Value> {
         "full" => Ok(Cut::Full),
         "half" => Ok(Cut::Half),
         "none" => Ok(Cut::None),
-        other => Err(fail("badRequest", json!({ "message": format!("cut: {other}") }))),
+        other => Err(fail(
+            "badRequest",
+            json!({ "message": format!("cut: {other}") }),
+        )),
     }
 }
 
@@ -191,9 +212,12 @@ fn bitmaps(images: &[Size], data: &[u8]) -> Result<Vec<MonoBitmap>, Value> {
         .iter()
         .map(|s| {
             let n = s.width as usize * s.height as usize;
-            let px = data.get(at..at + n).ok_or_else(|| fail("badRequest", json!({ "message": "image data is short" })))?;
+            let px = data
+                .get(at..at + n)
+                .ok_or_else(|| fail("badRequest", json!({ "message": "image data is short" })))?;
             at += n;
-            let mut b = MonoBitmap::try_new(s.height, s.width).map_err(|e| fail("badRequest", json!({ "message": e.to_string() })))?;
+            let mut b = MonoBitmap::try_new(s.height, s.width)
+                .map_err(|e| fail("badRequest", json!({ "message": e.to_string() })))?;
             for (i, &p) in px.iter().enumerate() {
                 if p != 0 {
                     let (x, y) = ((i % s.width as usize) as u32, (i / s.width as usize) as u32);
@@ -211,13 +235,23 @@ fn encode(model: &str, job: Job, images: &[Size], data: &[u8], r: &mut Reply) ->
     let bitmaps = bitmaps(images, data)?;
     let jobs: Vec<RasterJob> = bitmaps
         .into_iter()
-        .map(|bitmap| RasterJob { tape_width_mm: job.tape_mm, bitmap, copies: job.copies.unwrap_or(1).max(1), cut })
+        .map(|bitmap| RasterJob {
+            tape_width_mm: job.tape_mm,
+            bitmap,
+            copies: job.copies.unwrap_or(1).max(1),
+            cut,
+        })
         .collect();
-    let first = jobs.first().ok_or_else(|| driver_error(DriverError::NoLabels))?;
+    let first = jobs
+        .first()
+        .ok_or_else(|| driver_error(DriverError::NoLabels))?;
     let density = job.density.unwrap_or(0);
     match id {
         ModelId::Sr3500p => {
-            let d = Sr3500p { density, margin_dots: job.margin_dots.unwrap_or(0) };
+            let d = Sr3500p {
+                density,
+                margin_dots: job.margin_dots.unwrap_or(0),
+            };
             let b = d.encode_job(first).map_err(driver_error)?;
             let i = r.blob(b);
             r.json = json!({ "bytes": i });
@@ -233,7 +267,9 @@ fn encode(model: &str, job: Job, images: &[Size], data: &[u8], r: &mut Reply) ->
                 d.check_job(j, None).map_err(driver_error)?;
             }
             let refs: Vec<&MonoBitmap> = jobs.iter().map(|j| &j.bitmap).collect();
-            let b = d.encode_pages(&refs, job.tape_mm, cut, first.copies).map_err(driver_error)?;
+            let b = d
+                .encode_pages(&refs, job.tape_mm, cut, first.copies)
+                .map_err(driver_error)?;
             let i = r.blob(b);
             r.json = json!({ "bytes": i });
         }
@@ -266,7 +302,12 @@ pub fn call(req: &[u8], data: &[u8]) -> Result<Reply, Reply> {
     let mut r = Reply::default();
     let req: Req = match serde_json::from_slice(req) {
         Ok(q) => q,
-        Err(e) => return Err(Reply { json: fail("badRequest", json!({ "message": e.to_string() })), blobs: vec![] }),
+        Err(e) => {
+            return Err(Reply {
+                json: fail("badRequest", json!({ "message": e.to_string() })),
+                blobs: vec![],
+            });
+        }
     };
     let res = match req {
         Req::Models => {
@@ -291,7 +332,10 @@ pub fn call(req: &[u8], data: &[u8]) -> Result<Reply, Reply> {
     };
     match res {
         Ok(()) => Ok(r),
-        Err(json) => Err(Reply { json, blobs: vec![] }),
+        Err(json) => Err(Reply {
+            json,
+            blobs: vec![],
+        }),
     }
 }
 
@@ -320,9 +364,18 @@ pub unsafe extern "C" fn lb_free(p: *mut u8, n: usize) {
 /// # Safety
 /// `req` / `data` はそれぞれ `req_len` / `data_len` バイト読めること（`data_len` が 0 なら `data` は見ない）
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn lb_call(req: *const u8, req_len: usize, data: *const u8, data_len: usize) -> u32 {
+pub unsafe extern "C" fn lb_call(
+    req: *const u8,
+    req_len: usize,
+    data: *const u8,
+    data_len: usize,
+) -> u32 {
     let req = unsafe { std::slice::from_raw_parts(req, req_len) };
-    let data = if data_len == 0 { &[][..] } else { unsafe { std::slice::from_raw_parts(data, data_len) } };
+    let data = if data_len == 0 {
+        &[][..]
+    } else {
+        unsafe { std::slice::from_raw_parts(data, data_len) }
+    };
     let (code, reply) = match call(req, data) {
         Ok(r) => (0, r),
         Err(r) => (1, r),
@@ -348,7 +401,13 @@ mod tests {
     #[test]
     fn lists_models() {
         let r = call(br#"{"op":"models"}"#, &[]).ok().unwrap();
-        let ids: Vec<&str> = r.json.as_array().unwrap().iter().map(|m| m["id"].as_str().unwrap()).collect();
+        let ids: Vec<&str> = r
+            .json
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| m["id"].as_str().unwrap())
+            .collect();
         assert_eq!(ids, ["SR3500P", "SR5900P", "SR-R2500P"]);
     }
 
